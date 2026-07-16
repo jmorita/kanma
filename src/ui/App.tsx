@@ -245,9 +245,7 @@ export const App = () => {
   return (
     <div className={`app back-${back}`}>
       <header>
-        <h1>
-          韓麻 <span className="sub">ハンマ / 韓国式麻雀</span>
-        </h1>
+        <h1>韓麻</h1>
         <nav className="tabs">
           {debug && <span className="dbg">デバッグ表示中 (jj で解除)</span>}
           {(['table', 'rules', 'settings'] as Tab[]).map((t) => (
@@ -490,8 +488,12 @@ const SeatArea = ({ game, player, dir, chips, points, stakes, human, debug, opts
         <strong>{seatName(player.seat, game.seatCount)}</strong>
         {game.dealer === player.seat && <span className="badge dealer">親</span>}
         {player.riichi && <span className="badge riichi">リーチ</span>}
-        <span className="pt">{fmt(points)}点</span>
-        {stakes.rate > 0 && <span className="chips">{formatChips(chips)}W</span>}
+        {/* 名札には現在の持ち額だけを出す。累計の収支は結果パネルで見せる。 */}
+        {stakes.rate > 0 ? (
+          <span className="chips">{formatChips(chips)}W</span>
+        ) : (
+          <span className="pt">{fmt(points)}点</span>
+        )}
       </div>
 
       <div className="rack">
