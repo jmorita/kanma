@@ -7,7 +7,6 @@ import {
   respondCall,
   turnOptions,
   wallRemaining,
-  rinshanRemaining,
   seatName,
   type GameState,
   type Seat,
@@ -323,27 +322,11 @@ export const App = () => {
                    * 嶺上4枚 (カンで減る) / ドラ表示2枚 (表向き) / 裏ドラ表示2枚 (和了時のみ表)。
                    * 表示するのはドラそのものではなく「表示牌」。
                    */}
-                  <div className="dead-wall">
-                    {Array.from({ length: rinshanRemaining(game) }).map((_, i) => (
-                      <Tile key={`r${i}`} back />
-                    ))}
-                    {/* 使った嶺上牌のぶんは空けておき、減ったことが分かるようにする */}
-                    {Array.from({ length: game.rinshanTaken }).map((_, i) => (
-                      <span key={`g${i}`} className="rinshan-gap" />
-                    ))}
-                    {game.doraIndicators.map((t, i) => (
-                      <Tile key={`d${i}`} tile={t} />
-                    ))}
-                  </div>
-                  <div className="dw-labels">
-                    <span>嶺上 {rinshanRemaining(game)}</span>
-                    <span className="gold">ドラ表示</span>
-                  </div>
+                  <DeadWall game={game} />
                   <div className="wall-count">
                     <b>{wallRemaining(game)}</b>
                     <span>残り</span>
                   </div>
-                  <div className="kan-count">カン {game.kanCount}/{rules.maxKansPerHand}</div>
                 </div>
               </div>
 
@@ -419,14 +402,6 @@ export const App = () => {
             </div>
           </div>
 
-          <details className="log">
-            <summary>牌譜 ({game.log.length})</summary>
-            <ol>
-              {game.log.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ol>
-          </details>
         </>
       )}
     </div>
@@ -440,6 +415,41 @@ const Toggle = ({ on, onClick, label }: { on: boolean; onClick: () => void; labe
     {label}
   </button>
 )
+
+/**
+ * 王牌8枚 = 4列 × 2段の積み牌。
+ *
+ * 実物と同じく上から見た形にするので、見えるのは上段の4枚だけ。
+ *   上段(見える): 嶺上 嶺上 ドラ表示 ドラ表示
+ *   下段(隠れる): 嶺上 嶺上 裏ドラ  裏ドラ  ← ドラ表示牌の真下がその裏ドラ表示牌
+ * 裏ドラは和了時に結果パネルで見せる。
+ * 嶺上牌は左の列から順に取られ、1列(2枚)使い切ると空く。
+ */
+const DeadWall = ({ game }: { game: GameState }) => {
+  const taken = game.rinshanTaken
+  // 嶺上は左の列の上下2枚 → 右の列の上下2枚、の順に取る
+  const colUsedUp = (col: number) => taken >= (col + 1) * 2
+  return (
+    <div className="dead-wall-box">
+      <div className="dead-wall">
+        {[0, 1].map((col) =>
+          colUsedUp(col) ? (
+            <span key={`r${col}`} className="rinshan-gap" />
+          ) : (
+            <span key={`r${col}`} className="dw-stack">
+              <Tile back />
+            </span>
+          ),
+        )}
+        {game.doraIndicators.map((t, i) => (
+          <span key={`d${i}`} className="dw-stack">
+            <Tile tile={t} />
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /* ---------- 席 ---------- */
 

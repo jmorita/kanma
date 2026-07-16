@@ -19,10 +19,14 @@
   --tw: min(46px, calc((var(--table) - 30px) / 14.6));
   /* 牌画像は 66x90 なので、その比率に合わせる */
   --th: calc(var(--tw) * 1.364);
-  /* 河は6列 + 列間5つの隙間が河1マス(卓の21.3%)に収まる必要がある。
+  /* 河は6列 + 列間5つの隙間が河1マス(卓の24%)に収まる必要がある。
      隙間を勘定に入れないと両端の牌がマスからはみ出す。 */
   --tw-sm: min(26px, calc(var(--table) / 29.5));
   --th-sm: calc(var(--tw-sm) * 1.364);
+  /* 王牌は4列。中央マス(卓の24%)に4枚 + 隙間3つが収まり、
+     さらに左右の河と当たらないよう余白を残せる大きさに抑える。 */
+  --tw-dw: min(var(--tw), calc(var(--table) * 0.052));
+  --th-dw: calc(var(--tw-dw) * 1.364);
 }
 
 * { box-sizing: border-box; }
@@ -241,7 +245,9 @@ input { cursor: text; }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 64%;
+  /* 王牌8枚を中央マスに収めるため、河全体を少し広く取る。
+     マスは正方形のまま (左右の河は中身を90度回すので、正方形でないとはみ出す)。 */
+  width: 72%;
   aspect-ratio: 1;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -283,17 +289,40 @@ input { cursor: text; }
   overflow: visible;
   z-index: 2;
 }
-/* 王牌の表示。嶺上4枚 + ドラ表示2枚 の計6枚を中央に置く。 */
-.dead-wall { display: flex; gap: 2px; align-items: center; justify-content: center; }
-.rinshan-gap { width: var(--tw); height: var(--th); flex: none; }
-.dw-labels {
-  display: flex;
+/* 王牌 = 4列 × 2段の積み牌。上から見た形なので見えるのは上段の4枚だけ。 */
+.dead-wall-box { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dead-wall {
+  display: grid;
+  grid-template-columns: repeat(4, var(--tw-dw));
+  gap: 3px;
   justify-content: center;
-  gap: 14px;
-  font-size: 9px;
-  color: var(--muted);
 }
-.dw-labels .gold { color: var(--gold); }
+/* 王牌の牌だけ専用サイズにする */
+.dead-wall .tile { width: var(--tw-dw); height: var(--th-dw); }
+.dead-wall .tile .tile-inner { width: var(--tw-dw); height: var(--th-dw); }
+.rinshan-gap { width: var(--tw-dw); height: var(--th-dw); }
+/* 下に牌がもう1枚あることを、ずらした影で示す (2段積みなので) */
+.dw-stack { position: relative; display: block; }
+.dw-stack::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 3px;
+  width: 100%;
+  height: 100%;
+  border-radius: 12%/9%;
+  background: rgba(0, 0, 0, 0.55);
+}
+.dw-stack .tile { position: relative; }
+/* ラベルはドラ表示の2枚の真下に置く (王牌の右半分) */
+.dw-labels {
+  display: grid;
+  grid-template-columns: repeat(4, var(--tw-dw));
+  gap: 3px;
+  font-size: 9px;
+  text-align: center;
+}
+.dw-labels .dw-dora { grid-column: 3 / 5; color: var(--gold); }
 
 .dora-row {
   display: flex;
