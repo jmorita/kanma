@@ -14,7 +14,7 @@ import {
   type Meld,
 } from '../core/game'
 import { DEFAULT_RULES } from '../core/score'
-import { DEFAULT_STAKES, settle, shortOfDeposit, formatChips, type StakeSettings } from '../core/stakes'
+import { DEFAULT_STAKES, RAKE_CHOICES, settle, shortOfDeposit, formatChips, type StakeSettings } from '../core/stakes'
 import { tileName, type Tile as TileId } from '../core/tiles'
 import { cpuTurnAction, cpuCallResponse } from '../ai/cpu'
 import { Tile, type Dir } from './Tile'
@@ -407,6 +407,7 @@ export const App = () => {
                   <SettingsPanel
                     seatCount={seatCount}
                     stakes={stakes}
+                    debug={debug}
                     confirmTap={confirmTap}
                     onConfirmTap={(v) => {
                       setConfirmTap(v)
@@ -938,6 +939,7 @@ const Result = ({
 const SettingsPanel = ({
   seatCount,
   stakes,
+  debug,
   confirmTap,
   onConfirmTap,
   sound,
@@ -948,6 +950,7 @@ const SettingsPanel = ({
 }: {
   seatCount: number
   stakes: StakeSettings
+  debug: boolean
   confirmTap: boolean
   onConfirmTap: (v: boolean) => void
   sound: boolean
@@ -965,6 +968,28 @@ const SettingsPanel = ({
 
   return (
     <div className="settings">
+      <h3>人数</h3>
+      <div className="seg">
+        {[4, 3].map((n) => (
+          <button key={n} className={count === n ? 'on' : ''} onClick={() => setCount(n)}>
+            {n}人打ち
+          </button>
+        ))}
+      </div>
+
+      <h3>レーキ</h3>
+      <div className="seg">
+        {RAKE_CHOICES.map((r) => (
+          <button
+            key={r}
+            className={st.rakePercent === r ? 'on' : ''}
+            onClick={() => set('rakePercent', r)}
+          >
+            {r}%
+          </button>
+        ))}
+      </div>
+
       <h3>効果音</h3>
       <div className="seg">
         <button className={sound ? 'on' : ''} onClick={() => onSound(true)}>あり</button>
@@ -1002,37 +1027,29 @@ const SettingsPanel = ({
         ))}
       </div>
 
-      <h3>人数</h3>
-      <div className="seg">
-        {[3, 4].map((n) => (
-          <button key={n} className={count === n ? 'on' : ''} onClick={() => setCount(n)}>
-            {n}人打ち
-          </button>
-        ))}
-      </div>
-
-      <h3>仮想レート / レーキ</h3>
-      <div className="fields">
-        <label>
-          レート (1点あたりの W)
-          <input type="number" min={0} step={10} value={st.rate} onChange={(e) => set('rate', Math.max(0, Number(e.target.value)))} />
-        </label>
-        <label>
-          レーキ (%)
-          <input type="number" min={0} max={50} step={1} value={st.rakePercent} onChange={(e) => set('rakePercent', Math.min(50, Math.max(0, Number(e.target.value))))} />
-        </label>
-        <label>
-          デポジット (局開始に必要)
-          <input type="number" min={0} step={100} value={st.deposit} onChange={(e) => set('deposit', Math.max(0, Number(e.target.value)))} />
-        </label>
-        <label>
-          開始額 (W)
-          <input type="number" min={0} step={1000} value={st.startingChips} onChange={(e) => set('startingChips', Math.max(0, Number(e.target.value)))} />
-        </label>
-      </div>
-      <div className="seg">
-        <button onClick={() => setSt({ ...st, rate: 0, rakePercent: 0, deposit: 0 })}>レートなし (点数のみ)</button>
-      </div>
+      {/*
+        開始スタックとデポジットは通常は固定 (デポジット = 20点)。
+        動作確認のためだけに、デバッグ表示中 (jj) のときだけ手で変えられるようにする。
+      */}
+      {debug && (
+        <>
+          <h3>デバッグ: スタック / デポジット</h3>
+          <div className="fields">
+            <label>
+              レート (1点あたりの W)
+              <input type="number" min={0} step={10} value={st.rate} onChange={(e) => set('rate', Math.max(0, Number(e.target.value)))} />
+            </label>
+            <label>
+              デポジット (局開始に必要)
+              <input type="number" min={0} step={100} value={st.deposit} onChange={(e) => set('deposit', Math.max(0, Number(e.target.value)))} />
+            </label>
+            <label>
+              開始額 (W)
+              <input type="number" min={0} step={1000} value={st.startingChips} onChange={(e) => set('startingChips', Math.max(0, Number(e.target.value)))} />
+            </label>
+          </div>
+        </>
+      )}
 
       <div className="apply">
         <button className="hot" onClick={() => onApply(count, st)}>

@@ -48,11 +48,12 @@
   --tsumo-gap: 16px;
   /*
    * 手牌の大きさは卓の「幅」から決める。
-   * 内側の幅 = 卓幅 - 枠2つ。そこに13枚 + 間隔 + ツモ牌1枚が収まる大きさ。
+   * 内側の幅 = 卓幅 - 枠2つ。そこに13枚 + 牌間の隙間(13*1.5≒20px) +
+   * ツモ牌の間隔 + ツモ牌1枚が収まる大きさ。
    */
   --tw: min(
     46px,
-    calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 4px) / 14)
+    calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 30px) / 14)
   );
   /* 牌画像は 66x90 なので、その比率に合わせる */
   --th: calc(var(--tw) * 1.364);
@@ -68,14 +69,15 @@
    * 王牌8枚 (嶺上4 + 表示4) を除いた 128枚 - 配牌13n を n 人で割ると、
    * 4人打ちは最大19枚 + リーチ宣言牌の横向きぶん1 = 20スロット。列×段 >= 20 が要る。
    *
-   * 上下と左右を同じ形にすると河は正方形にしかならず (下の --pond-*-span 参照)、
-   * 短い辺に引きずられて牌が縮む。画面の余っている向きへ河を伸ばすため、
-   * 上下は浅く広く、左右は狭く深くする。6枚切りの慣習より牌の大きさを優先している。
+   * ここ (= PC) は卓に余裕があるので、慣習どおりの6枚切り・正方形の河にする。
+   * 牌を限界まで大きくすると河が卓いっぱいに広がって窮屈になるため、
+   * 下の --tw-sm で 26px に頭打ちさせて余白を残している。
+   * 画面の狭いスマホでは、下のメディアクエリで上下と左右の形を崩して牌を稼ぐ。
    */
-  --kawa-cols-h: 7;
-  --kawa-rows-h: 3;
-  --kawa-cols-v: 7;
-  --kawa-rows-v: 3;
+  --kawa-cols-h: 6;
+  --kawa-rows-h: 4;
+  --kawa-cols-v: 6;
+  --kawa-rows-v: 4;
   /*
    * 河が要する縦横を「牌の幅」を1として数える。
    *   幅 = 左右の河の深さ × 2 + 中央の枠の幅 (= 上下の河の列数)
@@ -108,6 +110,12 @@
   --tw-sm: max(
     7px,
     min(
+      /*
+       * PCは卓に余裕があり、上限を外すと河が卓いっぱいに広がって窮屈になる。
+       * 26pxで頭打ちにして、卓の縁と河の間に余白を残す。
+       * (画面の狭いスマホでは、下のメディアクエリがこの上限ごと差し替える)
+       */
+      26px,
       var(--tw),
       calc((var(--pond-w-avail) - var(--pond-w-gaps)) / var(--pond-w-span)),
       calc((var(--pond-h-avail) - var(--pond-h-gaps)) / var(--pond-h-span)),
@@ -401,17 +409,7 @@ input { cursor: text; }
   box-shadow: 0 0 0 3px #6fd3ff, 0 6px 16px rgba(0, 0, 0, 0.7);
   border-radius: 5px;
 }
-.side-bottom .tile.is-armed::after {
-  content: 'もう一度で切る';
-  position: absolute;
-  left: 50%;
-  bottom: -15px;
-  transform: translateX(-50%);
-  font-size: 9px;
-  color: #6fd3ff;
-  white-space: nowrap;
-  pointer-events: none;
-}
+/* 持ち上げた牌は青枠で持ち上がりが分かるので、文字の案内は添えない。 */
 
 .tile.is-pick { z-index: 4; }
 .tile.is-pick .tile-inner {
@@ -434,18 +432,7 @@ input { cursor: text; }
 /* 左右の席は牌が横倒しなので、縦横を入れ替えて確保する */
 .side-left .tsumo-slot, .side-right .tsumo-slot { width: var(--th-sm); height: var(--tw-sm); margin-top: 16px; }
 
-.side-bottom .tsumo-slot::after {
-  content: 'ツモ';
-  position: absolute;
-  left: 50%;
-  bottom: -15px;
-  transform: translateX(-50%);
-  font-size: 10px;
-  color: var(--gold);
-  white-space: nowrap;
-  opacity: 0.9;
-}
-.side-bottom .tsumo-slot:empty::after { content: ''; }
+/* ツモ牌は本体から離れた別枠に置いてあり見て分かるので、「ツモ」の文字は出さない。 */
 
 /* ================= 卓 ================= */
 
@@ -506,8 +493,13 @@ input { cursor: text; }
 
 /* 左右の席は手牌を縦に積む */
 .side-left .rack, .side-right .rack { flex-direction: column; }
-.side-bottom .hand, .side-top .hand { display: flex; align-items: flex-end; }
-.side-left .hand, .side-right .hand { display: flex; flex-direction: column; }
+/*
+ * 牌どうしを1.5px離す。ぴったり詰めると牌の暗い縁が2枚ぶん重なって
+ * 黒い縦線に見えるため、間に卓の緑をわずかに覗かせて縁を分ける。
+ * (この隙間ぶんは下のメディアクエリで --tw を詰めて卓内に収める)
+ */
+.side-bottom .hand, .side-top .hand { display: flex; align-items: flex-end; gap: 1.5px; }
+.side-left .hand, .side-right .hand { display: flex; flex-direction: column; gap: 1.5px; }
 .side-left .tile.is-drawn, .side-right .tile.is-drawn { margin-left: 0; margin-top: 12px; }
 
 .melds { display: flex; gap: 6px; }
@@ -725,6 +717,8 @@ input { cursor: text; }
   font-weight: bold;
   letter-spacing: 0.14em;
   border-radius: 7px;
+  /* ツモ・ロン・ポン・カン・パスの文字はすべて白で統一する。 */
+  color: #fff;
   background: linear-gradient(#33465c, #1e2c3d);
   border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 5px 14px rgba(0, 0, 0, 0.5);
@@ -1110,6 +1104,40 @@ input { cursor: text; }
     --top-band: 78px;
   }
   .side-top { top: 40px; }
+  /*
+   * 対面の名札は卓の上端ぎりぎりへ逃がす。手牌のすぐ下に置くと下家の河に重なる
+   * (縦向きは左右の河が10枚ぶん縦に伸びるので、河の上端が名札まで届く)。
+   * .side-top が卓の上端から40pxの位置なので、-40px で卓の縁のすぐ内側に付く。
+   * 右上のタブとは横にずれている (名札は右端から100px以上内側) ので重ならない。
+   */
+  .side-top .plate { top: -40px; }
+
+  /*
+   * 縦向きの操作ボタン (ロン/ポン/パス等) は手牌の右上に小さく重ねる。
+   * 画面下の固定バーにすると、指を置く位置と手牌が近くて誤タップしやすいうえ、
+   * 端末によっては手牌と重なる。手牌より一段上・右寄せにして手牌を隠さない。
+   * (横向きは高さが足りず下の固定バーが最適なので、そちらの指定を上書きしない)
+   */
+  .actions {
+    position: absolute;
+    left: auto;
+    right: 8px;
+    bottom: calc(var(--th) + 8px);
+    max-width: 60%;
+    justify-content: flex-end;
+    padding: 0;
+    gap: 6px;
+    background: none;
+    border-top: none;
+  }
+  .actions button { min-width: 62px; padding: 9px 12px; font-size: 15px; letter-spacing: 0.05em; }
+  .actions button.pass { min-width: 50px; padding: 9px 10px; font-size: 13px; }
+  /*
+   * 自分の名札は右下の隅、手牌のすぐ上に置く (中央寄りだと河や捨牌と近い)。
+   * 操作ボタンはその名札の上へ積む。名札(約42px)ぶん高く上げて重ねない。
+   */
+  .side-bottom .plate { left: auto; right: 8px; bottom: calc(var(--th) + 6px); }
+  .actions { bottom: calc(var(--th) + 54px); }
   /* 3人打ちは1人30枚。左右をさらに伸ばして浅さを保つ。 */
   .seats-3 {
     --kawa-cols-h: 8;
@@ -1117,32 +1145,11 @@ input { cursor: text; }
     --kawa-cols-v: 16;
     --kawa-rows-v: 2;
   }
+  /* 席ごとの授受は「持ちW」と「増減」を2段に分ける (1行だと横に長く読みにくい)。 */
+  .lseat { flex-direction: column; align-items: center; gap: 1px; }
+  .lseat .c { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .lseat .c em { margin: 0; }
   .tabs button { padding: 4px 8px; font-size: 12px; }
-
-  /*
-   * 操作ボタンは画面下に固定。卓には重ならない。
-   * ポン/パスは手牌に近い方が押しやすいので、鳴きなし等の設定より「上」に置く。
-   */
-  .actions {
-    position: fixed;
-    left: 0;
-    right: 0;
-    /* 設定バー(38px)のちょうど上に積む */
-    bottom: 38px;
-    max-width: none;
-    justify-content: center;
-    gap: 6px;
-    padding: 6px;
-    background: rgba(4, 12, 9, 0.94);
-    border-top: 1px solid var(--line);
-  }
-  .actions button { min-width: 68px; padding: 10px 12px; font-size: 15px; letter-spacing: 0.05em; }
-  .actions button.pass { min-width: 56px; padding: 10px 10px; font-size: 13px; }
-
-  /*
-   * 常用設定は最下段。押す頻度が低いので操作ボタンより下に置く。
-   * 高さを固定して、操作バーをちょうどこの上に積めるようにする。
-   */
 
   .result { width: min(94%, 400px); padding: 10px; }
   .win-hand { padding: 6px 2px; }
@@ -1177,7 +1184,7 @@ input { cursor: text; }
     /* 手牌をやや譲って河と他家を大きくする (それでも縦向きより大きい) */
     --tw: min(
       32px,
-      calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 4px) / 14)
+      calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 30px) / 14)
     );
     /* 河の牌の下限。潰れると何が切られたか読めない。 */
     --tw-sm: max(
@@ -1209,6 +1216,11 @@ input { cursor: text; }
   .actions button { padding: 8px 12px; font-size: 14px; min-width: 58px; }
   .actions button.pass { padding: 8px 10px; font-size: 13px; min-width: 48px; }
   .opt-menu > summary { padding: 4px 9px; font-size: 11px; }
+  /*
+   * 横向きは手牌が中央に寄る (左端まで198pxほど空く) ので、設定プルダウンを
+   * 卓の左下の隅まで下げられる。手牌とは横にずれているのでタップは奪わない。
+   */
+  .opt-menu { bottom: 6px; }
   .tab { padding: 4px 8px; font-size: 11px; }
   /* 結果パネルが画面からはみ出さないよう、縦に詰めて収める */
   .result {

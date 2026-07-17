@@ -23,9 +23,12 @@ export interface StakeSettings {
 export const DEFAULT_STAKES: StakeSettings = {
   rate: 100, // 1点 = 100W
   rakePercent: 10, // 和了者の受取から10%
-  deposit: 1000, // 1,000W
+  deposit: 2000, // 20点ぶん (= 20 * rate)
   startingChips: 20000,
 }
+
+/** 設定で選べるレーキ率。刻みを絞って、極端な値を入れられないようにする。 */
+export const RAKE_CHOICES = [10, 5, 0] as const
 
 /** レートを掛けない「レートなし」モード。点数だけで遊ぶとき用。 */
 export const NO_STAKES: StakeSettings = {
