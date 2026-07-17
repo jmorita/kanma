@@ -80,6 +80,48 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * iOS のツールバーを縮めるための仕掛け (toolbarShrink.ts が html に付ける)。
+ * ページを2画面分にしてスクロールできるようにし、Safari にバーを縮めさせる。
+ * #root は sticky で画面に貼り付いたままなので、卓は動かず、
+ * バーが縮んだぶんだけ dvh で伸びる。
+ */
+html.fs-scroll,
+html.fs-scroll body {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+html.fs-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+}
+html.fs-scroll #root {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: var(--vh);
+}
+#fs-spacer { width: 100%; background: var(--bg); }
+
+/* スワイプの案内。卓の外(上端)に出し、操作の邪魔にならないよう触れないようにする。 */
+.fs-hint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 2147483647;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: rgba(233, 216, 166, 0.92);
+  background: rgba(10, 20, 16, 0.86);
+  padding: 6px 10px;
+  pointer-events: none;
+  user-select: none;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -339,8 +381,8 @@ input { cursor: text; }
 }
 .side.active .plate { border-color: var(--gold); box-shadow: 0 0 8px rgba(224, 187, 99, 0.5); }
 .plate .pt { color: var(--gold); }
+/* 額は「W」を付けているので、コインの絵文字は重複。端末ごとに見た目も崩れるので出さない。 */
 .plate .chips { color: var(--muted); }
-.plate .chips::before { content: '🪙'; margin-right: 2px; }
 
 .badge { background: rgba(255, 255, 255, 0.16); border-radius: 3px; padding: 1px 4px; font-size: 10px; }
 .badge.dealer { background: var(--gold); color: #1a1a1a; font-weight: bold; }

@@ -29,6 +29,7 @@ import {
   supportsFullscreen,
   toggleFullscreen,
 } from './fullscreen'
+import { enableToolbarShrink, onFirstScroll, shouldShrinkToolbar } from './toolbarShrink'
 
 const HUMAN: Seat = 0
 const CPU_DELAY_MS = 420
@@ -78,6 +79,19 @@ export const App = () => {
   useEffect(() => {
     setFs(isFullscreen())
     return onFullscreenChange(setFs)
+  }, [])
+
+  /** iOS のツールバーを縮める案内を出すか (一度スワイプされたら消す)。 */
+  const [shrinkHint, setShrinkHint] = useState(false)
+  useEffect(() => {
+    if (!shouldShrinkToolbar()) return
+    const off = enableToolbarShrink()
+    setShrinkHint(true)
+    const offScroll = onFirstScroll(() => setShrinkHint(false))
+    return () => {
+      off()
+      offScroll()
+    }
   }, [])
 
   // リーチは2点固定。
@@ -286,6 +300,7 @@ export const App = () => {
 
   return (
     <div className={`app back-${back}`}>
+      {shrinkHint && <div className="fs-hint">▲ 画面を上にゆっくりスワイプするとツールバーが縮みます</div>}
       <header>
         <h1>韓麻</h1>
         <nav className="tabs">
