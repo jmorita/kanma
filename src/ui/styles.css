@@ -216,6 +216,22 @@ input { cursor: text; }
 .meld { display: flex; }
 .side-left .meld, .side-right .meld { flex-direction: column; }
 
+/*
+ * 鳴いた牌は横向きになるぶん短くなる。実際の卓では牌は手前(外側)に揃えて置くので、
+ * 各席から見た「外側」= 卓の中心と反対側に寄せる。
+ * 中心は 手前席の上 / 奥席の下 / 左席の右 / 右席の左 にある。
+ */
+.side-bottom .meld { align-items: flex-end; }
+.side-top .meld { align-items: flex-start; }
+.side-left .meld { align-items: flex-start; }
+.side-right .meld { align-items: flex-end; }
+
+/* 副露も手牌と同じ高さ(奥行き)に並べる */
+.side-bottom .rack { align-items: flex-end; }
+.side-top .rack { align-items: flex-start; }
+.side-left .rack { align-items: flex-start; }
+.side-right .rack { align-items: flex-end; }
+
 /* --- 名札 --- */
 .plate {
   display: flex;
