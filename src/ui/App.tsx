@@ -456,22 +456,27 @@ export const App = () => {
                 </>
               )}
 
-              {started && myCall && myCall.response === null && (
-                <>
-                  {myCall.options.includes('ron') && (
-                    <button className="hot" onClick={() => { respondCall(game, HUMAN, 'ron'); announce('ron', HUMAN); force() }}>
-                      ロン
-                    </button>
-                  )}
-                  {myCall.options.includes('pon') && (
-                    <button className="call" onClick={() => { respondCall(game, HUMAN, 'pon'); announce('pon', HUMAN); force() }}>ポン</button>
-                  )}
-                  {myCall.options.includes('minkan') && (
-                    <button className="call" onClick={() => { respondCall(game, HUMAN, 'minkan'); announce('kan', HUMAN); force() }}>カン</button>
-                  )}
-                  <button className="pass" onClick={() => { respondCall(game, HUMAN, 'pass'); force() }}>パス</button>
-                </>
-              )}
+              {started && myCall && myCall.response === null && (() => {
+                // ロンできる牌なら和了を優先し、ポン・カンは出さない (ロンかパスだけに絞る)。
+                // 鳴ける牌でアガリが出たときに、要らないポン/パスの選択で迷わせないため。
+                const canRon = myCall.options.includes('ron')
+                return (
+                  <>
+                    {canRon && (
+                      <button className="hot" onClick={() => { respondCall(game, HUMAN, 'ron'); announce('ron', HUMAN); force() }}>
+                        ロン
+                      </button>
+                    )}
+                    {!canRon && myCall.options.includes('pon') && (
+                      <button className="call" onClick={() => { respondCall(game, HUMAN, 'pon'); announce('pon', HUMAN); force() }}>ポン</button>
+                    )}
+                    {!canRon && myCall.options.includes('minkan') && (
+                      <button className="call" onClick={() => { respondCall(game, HUMAN, 'minkan'); announce('kan', HUMAN); force() }}>カン</button>
+                    )}
+                    <button className="pass" onClick={() => { respondCall(game, HUMAN, 'pass'); force() }}>パス</button>
+                  </>
+                )
+              })()}
             </div>
 
             {/* 開始前。押されるまで配牌も進行も始めない。 */}
