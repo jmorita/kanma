@@ -66,9 +66,16 @@
 
   /*
    * 河の並び。1行 --kawa-cols 枚 × --kawa-rows 段。
-   * 6枚切りは慣習だが、横向きでは高さが足りないので列を増やして段を浅くする。
+   *
+   * 段数は「1人あたりの最大捨牌数」から決まる (足りないと河が枠から溢れる)。
+   * 王牌8枚 (嶺上4 + 表示4) を除いた 128枚 - 配牌13n を n 人で割ると、
+   * 4人打ちは最大19枚 + リーチ宣言牌の横向きぶん1 = 20スロット。
+   *
+   * 慣習の6枚切りだと 20/6 = 4段 必要になり、深さが上下から高さを食って牌が縮む。
+   * 7列にすると 20/7 = 3段 で収まり、同じ河でも牌を約12%大きくできる:
+   *   6列4段 -> 16.0px / 7列3段 -> 17.8px / 8列3段 -> 16.7px (縦向き実測ベース)
    */
-  --kawa-cols: 6;
+  --kawa-cols: 7;
   --kawa-rows: 3;
   /*
    * 河が要する一辺を「牌の幅」を1として数える。
@@ -78,6 +85,8 @@
    * → 河の縦と横の必要量は必ず一致する = 河は正方形にしかならない。
    */
   --pond-span: calc(2 * var(--kawa-rows) * 1.364 + var(--kawa-cols));
+  /* 牌と牌の1pxの隙間ぶん。これを引かないと1列/1段ぶん溢れる。 */
+  --pond-gaps: calc(2 * var(--kawa-rows) * 1px + var(--kawa-cols) * 1px + 6px);
   /*
    * 河と他家の牌。上限は「河が --pond に収まること」と
    * 「左右の席の手牌13枚が卓の高さに収まること」の両方から決まる。
@@ -89,7 +98,7 @@
     7px,
     min(
       var(--tw),
-      calc((var(--pond) - 8px) / var(--pond-span)),
+      calc((var(--pond) - var(--pond-gaps)) / var(--pond-span)),
       calc((var(--table-h) - 60px) / 13 / 1.364)
     )
   );
@@ -224,10 +233,10 @@ input { cursor: text; }
   position: absolute;
   left: 6px;
   /*
-   * 手牌のすぐ上に自分の名札が入ったので、その上に積む。
-   * (下げすぎると手牌に重なってタップを奪う / 上げすぎると左家の河に被る)
+   * 手牌のすぐ上まで下げる。自分の名札はこの上に積むので、ここは最下段でよい。
+   * (これ以上下げると手牌に重なってタップを奪う)
    */
-  bottom: calc(var(--th) + 60px);
+  bottom: calc(var(--th) + 8px);
   z-index: 6;
 }
 .opt-menu > summary {
@@ -457,12 +466,13 @@ input { cursor: text; }
  * 名札は手牌の「上」に積むと、そのぶん河が上下から潰される。
  * 流れから外して河の空いている隅 (河は3x3で四隅が空く) に置く:
  *   自分 = 左下 / 対面 = 右上。中央の列を避けるので河の牌に被らない。
+ * ただし卓の隅は先客がいる (左下=設定プルダウン / 右上=タブ・右家の名札) ので、
+ * 端に寄せきらず「左家・右家の手牌のすぐ内側」に置き、先客とは縦に積んで避ける。
+ * 縦の余白は狭い (縦向きでは河の下端と設定の間が40px強しかない) ので、
+ * 数値を動かすと河か設定のどちらかに触れる。
  */
- * 左下は設定プルダウン、右上は右家の名札が先に居るので、縦に積んで避ける
- * (対面の名札は右家の名札のぶんだけ下げる)。
- */
-.side-bottom .plate { position: absolute; left: 0; bottom: calc(var(--th) + 4px); }
-.side-top .plate    { position: absolute; right: 0; top: calc(var(--th-sm) + 48px); }
+.side-bottom .plate { position: absolute; left: calc(var(--th-sm) + 14px); bottom: calc(var(--th) + 32px); }
+.side-top .plate    { position: absolute; right: calc(var(--th-sm) + 14px); top: calc(var(--th-sm) + 50px); }
 /*
  * 左右の席は名札を手牌の「横」に置くと、卓が小さいとき河に被る
  * ([名札][河][名札] が卓幅に収まらない)。名札は手牌の上に積む。
@@ -480,6 +490,13 @@ input { cursor: text; }
 .side-left .melds, .side-right .melds { flex-direction: column; }
 .meld { display: flex; }
 .side-left .meld, .side-right .meld { flex-direction: column; }
+/*
+ * 加槓の4枚目は、横向きの牌に「重ねて」置く。並びと直交する方向へ積むので、
+ * 手前/奥の席では縦積み、左右の席では横積みになる。
+ * 積む向き (卓の外側へ伸ばす) は .meld の align-items が既に決めている。
+ */
+.kakan { display: flex; flex-direction: column; }
+.side-left .kakan, .side-right .kakan { flex-direction: row; }
 
 /*
  * 鳴いた牌は横向きになるぶん短くなる。実際の卓では牌は手前(外側)に揃えて置くので、
@@ -550,6 +567,12 @@ input { cursor: text; }
   grid-template-columns: var(--kawa-depth) minmax(0, 1fr) var(--kawa-depth);
   grid-template-rows: var(--kawa-depth) minmax(0, 1fr) var(--kawa-depth);
 }
+/*
+ * 3人打ちは1人あたりの捨牌が30枚と多い (4人打ちは19枚)。6列のままだと6段必要で
+ * 河が深くなり牌が小さくなるので、列を増やして段を浅く保つ。
+ */
+.seats-3 { --kawa-cols: 8; --kawa-rows: 4; }
+
 .pc-top { grid-area: 1 / 2; }
 .pc-left { grid-area: 2 / 1; }
 .pond-center { grid-area: 2 / 2; }
@@ -572,18 +595,31 @@ input { cursor: text; }
 .pc-left .pond-inner { transform: rotate(90deg) translateY(-100%); }
 .pc-right .pond-inner { transform: rotate(-90deg) translateX(-100%); }
 
+/*
+ * 河は grid ではなく flex で詰める。
+ * grid で列を固定すると、横倒しのリーチ宣言牌 (幅 = 牌1.364枚ぶん) に
+ * 2列(2枚ぶん)を割り当てることになり、差分が宣言牌の後ろに空白として残る。
+ * flex なら実寸で詰まるので空白が出ず、段数も変わらない。
+ */
 .discards {
-  display: grid;
-  grid-template-columns: repeat(var(--kawa-cols), var(--tw-sm));
-  justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
   align-content: start;
   gap: 1px;
 }
-/* リーチ宣言牌は横に倒れるぶん、置き場所も広げる */
-.discards .tile.is-swap { grid-column: span 2; justify-self: start; }
 
 /* 王牌を置く中央の枠。枠線だけ白系で、中は暗いグレー。 */
 .pond-center {
+  /*
+   * 枠はマス全体ではなく王牌の実寸に沿わせる。マスは河の幅ぶん確保されていて
+   * 王牌より一回り大きいので、埋めてしまうと枠だけが目立って河を圧迫して見える。
+   */
+  justify-self: center;
+  align-self: center;
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -591,7 +627,8 @@ input { cursor: text; }
   gap: 6px;
   padding: 8px;
   background: rgba(38, 44, 41, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  /* 白いと枠だけが浮いて河より目立つ。卓に馴染むグレーにして、そのぶん太くする。 */
+  border: 3px solid rgba(151, 162, 157, 0.72);
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   font-size: 10px;
@@ -1070,12 +1107,7 @@ input { cursor: text; }
     /* ボタン類が卓の中に入ったので、卓の外はほぼ余白のみ。そのぶん卓に高さを回す。 */
     --chrome: calc(12px + env(safe-area-inset-bottom));
     --top-band: 32px;
-    /*
-     * 横向きは高さが足りない。6枚切りのままだと河が3段ぶん深くなり、
-     * その深さが上下から高さを食う。1行を8枚にして段を浅くし、
-     * 余っている「幅」の方へ河を逃がす (河の縦の必要量が減る)。
-     */
-    --kawa-cols: 8;
+    /* 河の列数・段数は :root の 7列3段 のままで横向きも最大になる (専用の上書きは不要)。 */
     /* 手牌をやや譲って河と他家を大きくする (それでも縦向きより大きい) */
     --tw: min(
       32px,
@@ -1086,11 +1118,13 @@ input { cursor: text; }
       13px,
       min(
         26px,
-        calc((var(--pond) - 8px) / var(--pond-span)),
+        calc((var(--pond) - var(--pond-gaps)) / var(--pond-span)),
         calc((var(--table-h) - 60px) / 13 / 1.364)
       )
     );
   }
+  /* 3人打ちは捨牌が多い (31スロット)。8列でも4段要る。 */
+  .seats-3 { --kawa-cols: 8; --kawa-rows: 4; }
   .actions button { padding: 8px 12px; font-size: 14px; min-width: 58px; }
   .actions button.pass { padding: 8px 10px; font-size: 13px; min-width: 48px; }
   .opt-menu > summary { padding: 4px 9px; font-size: 11px; }

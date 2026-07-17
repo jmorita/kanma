@@ -225,12 +225,13 @@ export const App = () => {
       !o.canTsumo &&
       o.kanTiles.length === 0
     ) {
+      // 自動でも他家と同じ間を置く。即座に切ると何が起きたか追えない。
       const id = setTimeout(() => {
         if (discard(game, HUMAN, game.drawnTile!)) {
           sfx.discard()
           force()
         }
-      }, 260)
+      }, CPU_DELAY_MS)
       return () => clearTimeout(id)
     }
   }, [game, tick, autoWin, noCall, autoTsumogiri, effect, announce, started])
@@ -713,13 +714,26 @@ const Melds = ({
 }) => (
   <div className="melds">
     {melds.map((m, i) => {
-      const n = m.kind === 'pon' ? 3 : 4
+      /*
+       * 加槓はポンした3枚のまま。4枚目は新しく横に足すのではなく、
+       * 鳴いた相手を示す「横向きの牌」に重ねて置くのが一般的な表示。
+       */
+      const stacked = m.kind === 'kakan'
+      const n = m.kind === 'pon' || stacked ? 3 : 4
       const called = calledTileIndex(m, seat, seatCount, n)
       return (
         <span key={i} className="meld">
           {Array.from({ length: n }).map((_, j) => {
             // 暗槓は両端を伏せる。
             const hidden = m.kind === 'ankan' && (j === 0 || j === 3)
+            if (stacked && j === called) {
+              return (
+                <span key={j} className="kakan">
+                  <Tile tile={m.tile} dir={dir} small rotated />
+                  <Tile tile={m.tile} dir={dir} small rotated />
+                </span>
+              )
+            }
             return (
               <Tile
                 key={j}
