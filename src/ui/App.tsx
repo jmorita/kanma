@@ -188,10 +188,13 @@ export const App = () => {
       const mc = game.pendingCalls.find((c) => c.seat === HUMAN && c.response === null)
       if (!mc) return
       if (autoWin && mc.options.includes('ron')) {
-        respondCall(game, HUMAN, 'ron')
-        announce('ron', HUMAN)
-        force()
-        return
+        // 自動でも間を置く。即座に処理すると何が起きたか分からない。
+        const id = setTimeout(() => {
+          respondCall(game, HUMAN, 'ron')
+          announce('ron', HUMAN)
+          force()
+        }, CPU_DELAY_MS)
+        return () => clearTimeout(id)
       }
       // 鳴きなしでもロンは取りこぼさない。
       if (noCall && !mc.options.includes('ron')) {
@@ -204,10 +207,13 @@ export const App = () => {
     const o = turnOptions(game, HUMAN)
 
     if (autoWin && o.canTsumo) {
-      declareTsumo(game, HUMAN)
-      announce('tsumo', HUMAN)
-      force()
-      return
+      // 自動でも間を置く。
+      const id = setTimeout(() => {
+        declareTsumo(game, HUMAN)
+        announce('tsumo', HUMAN)
+        force()
+      }, CPU_DELAY_MS)
+      return () => clearTimeout(id)
     }
 
     // リーチ後の自動ツモ切り。和了牌やカンできる牌まで黙って切らないよう、
@@ -315,8 +321,9 @@ export const App = () => {
                     key={t}
                     className={tab === t ? 'tab on' : 'tab'}
                     onClick={() => setTab(tab === t ? 'table' : t)}
+                    aria-label={t === 'rules' ? 'ルール' : '設定'}
                   >
-                    {tab === t ? '閉じる' : t === 'rules' ? 'ルール' : '設定'}
+                    {tab === t ? '閉じる' : t === 'rules' ? 'ルール' : '⚙'}
                   </button>
                 ))}
               </nav>

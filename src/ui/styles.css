@@ -54,22 +54,52 @@
   /* 牌画像は 66x90 なので、その比率に合わせる */
   --th: calc(var(--tw) * 1.364);
 
-  /* 手前の席が使う帯 = 名札 + 手牌 (手前だけ大きい牌を使う) */
-  --seat-band: calc(var(--th) + 28px);
-  /* 奥の席の帯。小さい牌なので手前より狭くて足りる。 */
-  --top-band: 68px;
+  /* 手前の席が使う帯 = 手牌のみ (名札は流れから外して隅に置くので要らない) */
+  --seat-band: calc(var(--th) + 10px);
+  /* 奥の席の帯。小さい牌しか置かず、名札も隅に逃がしたので狭くて足りる。 */
+  --top-band: 46px;
   /* 河は上下の帯に挟まれた正方形。 */
   --pond: max(
     84px,
     min(calc(var(--table-h) - var(--seat-band) - var(--top-band)), calc(var(--table-w) - 100px))
   );
 
-  /* 河は6列 + 列間5つの隙間が河1マス(河の1/3)に収まる必要がある。
-     隙間を勘定に入れないと両端の牌がマスからはみ出す。 */
-  --tw-sm: max(7px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
+  /*
+   * 河の並び。1行 --kawa-cols 枚 × --kawa-rows 段。
+   * 6枚切りは慣習だが、横向きでは高さが足りないので列を増やして段を浅くする。
+   */
+  --kawa-cols: 6;
+  --kawa-rows: 3;
+  /*
+   * 河が要する一辺を「牌の幅」を1として数える。
+   *   一辺 = 上下(または左右)の河の深さ × 2 + 中央の枠
+   *   河の深さ = 段数 × 1.364 (牌の縦横比) / 中央の枠 = 河の幅 = 列数
+   * 左右の河は90度回すので、中央の枠は縦にも河の幅ぶん要る。
+   * → 河の縦と横の必要量は必ず一致する = 河は正方形にしかならない。
+   */
+  --pond-span: calc(2 * var(--kawa-rows) * 1.364 + var(--kawa-cols));
+  /*
+   * 河と他家の牌。上限は「河が --pond に収まること」と
+   * 「左右の席の手牌13枚が卓の高さに収まること」の両方から決まる。
+   * 手牌(--tw)は超えないようにする。
+   * ※ 以前は「1マス = 河の1/3 の正方形」を前提に (pond/3 - 6)/6 としていたが、
+   *   河は段数ぶんの深さしか使わないので、マスの3割強が死に余白になっていた。
+   */
+  --tw-sm: max(
+    7px,
+    min(
+      var(--tw),
+      calc((var(--pond) - 8px) / var(--pond-span)),
+      calc((var(--table-h) - 60px) / 13 / 1.364)
+    )
+  );
   --th-sm: calc(var(--tw-sm) * 1.364);
+  /* 河の深さ (段数ぶん)。マスの一辺ではなくこれだけ確保すればよい。 */
+  --kawa-depth: calc(var(--kawa-rows) * (var(--th-sm) + 1px));
+  /* 中央の枠 = 河の一辺から上下の深さを引いた残り。 */
+  --pond-center: calc(var(--pond) - 2 * var(--kawa-depth));
   /* 王牌は河・他家の手牌と同じ大きさ。中央枠に4枚 + 隙間 + 余白が収まらなければ縮める。 */
-  --tw-dw: min(var(--tw-sm), calc((var(--pond) / 3 - 26px) / 4));
+  --tw-dw: min(var(--tw-sm), calc((var(--pond-center) - 26px) / 4));
   --th-dw: calc(var(--tw-dw) * 1.364);
   /* 和了形の牌。結果パネル(最大470px)に14枚 + アガリ牌の間隔が収まる大きさ。 */
   --tw-win: min(32px, calc((min(470px, 86vw) - 40px) / 15));
@@ -192,8 +222,12 @@ input { cursor: text; }
  */
 .opt-menu {
   position: absolute;
-  left: 8px;
-  bottom: calc(var(--seat-band) + 4px);
+  left: 6px;
+  /*
+   * 手牌のすぐ上に自分の名札が入ったので、その上に積む。
+   * (下げすぎると手牌に重なってタップを奪う / 上げすぎると左家の河に被る)
+   */
+  bottom: calc(var(--th) + 60px);
   z-index: 6;
 }
 .opt-menu > summary {
@@ -413,8 +447,22 @@ input { cursor: text; }
 .side .tile, .side .plate, .side .meld { pointer-events: auto; }
 .side .rack { display: flex; align-items: center; gap: 10px; }
 
-.side-bottom { bottom: 6px; left: 50%; transform: translateX(-50%); flex-direction: column; align-items: center; }
-.side-top    { top: 6px; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; align-items: center; }
+/*
+ * 手前と奥の席は卓の幅いっぱいに取る。手牌は中央に置いたまま、
+ * 名札だけを絶対配置で端に逃がすため (下記 .side-bottom .plate)。
+ */
+.side-bottom { bottom: 6px; left: var(--frame); right: var(--frame); transform: none; flex-direction: column; align-items: center; }
+.side-top    { top: 6px; left: var(--frame); right: var(--frame); transform: none; flex-direction: column-reverse; align-items: center; }
+/*
+ * 名札は手牌の「上」に積むと、そのぶん河が上下から潰される。
+ * 流れから外して河の空いている隅 (河は3x3で四隅が空く) に置く:
+ *   自分 = 左下 / 対面 = 右上。中央の列を避けるので河の牌に被らない。
+ */
+ * 左下は設定プルダウン、右上は右家の名札が先に居るので、縦に積んで避ける
+ * (対面の名札は右家の名札のぶんだけ下げる)。
+ */
+.side-bottom .plate { position: absolute; left: 0; bottom: calc(var(--th) + 4px); }
+.side-top .plate    { position: absolute; right: 0; top: calc(var(--th-sm) + 48px); }
 /*
  * 左右の席は名札を手牌の「横」に置くと、卓が小さいとき河に被る
  * ([名札][河][名札] が卓幅に収まらない)。名札は手牌の上に積む。
@@ -488,12 +536,19 @@ input { cursor: text; }
   top: var(--top-band);
   left: 50%;
   transform: translateX(-50%);
-  /* マスは正方形にする (左右の河は中身を90度回すので、正方形でないとはみ出す)。 */
+  /*
+   * 外周のマスは「河の深さ」だけ確保する。1/3 ずつの正方形にすると、
+   * 河は段数ぶんしか使わないのでマスの3割強が死に余白になり、牌が小さくなる。
+   */
   width: var(--pond);
   height: var(--pond);
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
+  /*
+   * 中央は minmax(0, 1fr)。ただの 1fr だと最小サイズが中身(王牌+残り表示)の
+   * min-content になり、中央が要求ぶんだけ広がって河ごと枠の外へ押し出される。
+   */
+  grid-template-columns: var(--kawa-depth) minmax(0, 1fr) var(--kawa-depth);
+  grid-template-rows: var(--kawa-depth) minmax(0, 1fr) var(--kawa-depth);
 }
 .pc-top { grid-area: 1 / 2; }
 .pc-left { grid-area: 2 / 1; }
@@ -501,15 +556,25 @@ input { cursor: text; }
 .pc-right { grid-area: 2 / 3; }
 .pc-bottom { grid-area: 3 / 2; }
 
-/* セルは正方形なので、中身を回してもセルからはみ出さない */
-.pond-inner { width: 100%; height: 100%; }
+/* 上下のマスは回しても縦横が入れ替わらないので、そのまま埋める。 */
+.pc-top .pond-inner, .pc-bottom .pond-inner { width: 100%; height: 100%; }
 .pc-top .pond-inner { transform: rotate(180deg); }
-.pc-left .pond-inner { transform: rotate(90deg); }
-.pc-right .pond-inner { transform: rotate(-90deg); }
+/*
+ * 左右のマスは中身を90度回すぶん、縦横を入れ替えた実寸で作ってから回す。
+ * (マスが正方形でなくなったので width/height:100% のままでは はみ出す)
+ * 原点を左上に固定し、回転後にちょうどマスへ重なるよう平行移動する。
+ */
+.pc-left .pond-inner, .pc-right .pond-inner {
+  width: var(--pond-center);
+  height: var(--kawa-depth);
+  transform-origin: 0 0;
+}
+.pc-left .pond-inner { transform: rotate(90deg) translateY(-100%); }
+.pc-right .pond-inner { transform: rotate(-90deg) translateX(-100%); }
 
 .discards {
   display: grid;
-  grid-template-columns: repeat(6, var(--tw-sm));
+  grid-template-columns: repeat(var(--kawa-cols), var(--tw-sm));
   justify-content: center;
   align-content: start;
   gap: 1px;
@@ -574,11 +639,11 @@ input { cursor: text; }
 
 /* ================= 操作 ================= */
 
-/* 操作ボタンは卓の右下。手牌のタップを奪わないよう、手牌の帯より上に置く。 */
+/* 操作ボタンは卓の右下。手牌のタップを奪わないよう、手牌のすぐ上に置く。 */
 .actions {
   position: absolute;
   right: 8px;
-  bottom: calc(var(--seat-band) + 4px);
+  bottom: calc(var(--th) + 8px);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -798,12 +863,16 @@ input { cursor: text; }
  * 点数の授受。卓と同じ配置 (手前/右/奥/左) で置くので、
  * 誰が誰に払ったのかが直感的に分かる。
  */
+/*
+ * 縦は詰める。スクロールが出ると「次の局へ」に気づけなくなるため、
+ * 3段ぶんの高さを抑えて画面に収める。
+ */
 .ledger-seats {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: auto auto auto;
-  gap: 4px;
-  margin: 10px 0;
+  gap: 2px;
+  margin: 6px 0;
   font-variant-numeric: tabular-nums;
 }
 .l-top { grid-area: 1 / 2; }
@@ -811,21 +880,23 @@ input { cursor: text; }
 .l-right { grid-area: 2 / 3; }
 .l-bottom { grid-area: 3 / 2; }
 
+/* 席名・増減・額を1行に並べて縦を詰める */
 .lseat {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
 }
-.lseat .n { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.lseat .n { font-size: 10px; color: var(--muted); }
 .lseat .n .badge { margin-left: 3px; }
-.lseat .p { font-size: 17px; font-weight: bold; }
-.lseat .c { font-size: 10px; color: var(--muted); }
-.lseat .c em { font-style: normal; margin-left: 4px; }
+.lseat .p { font-size: 15px; font-weight: bold; }
+.lseat .c { font-size: 9px; color: var(--muted); }
+.lseat .c em { font-style: normal; margin-left: 3px; }
 .lseat.plus { border-color: rgba(224, 187, 99, 0.5); }
 .lseat.plus .p, .lseat.plus .c em { color: var(--gold); }
 .lseat.minus .p, .lseat.minus .c em { color: #e69384; }
@@ -995,18 +1066,30 @@ input { cursor: text; }
  *   - 奥の席の帯を詰める (小さい牌しか置かないので広く要らない)
  */
 @media (max-height: 540px) {
-@media (max-height: 540px) {
   :root {
     /* ボタン類が卓の中に入ったので、卓の外はほぼ余白のみ。そのぶん卓に高さを回す。 */
     --chrome: calc(12px + env(safe-area-inset-bottom));
-    --top-band: 42px;
+    --top-band: 32px;
+    /*
+     * 横向きは高さが足りない。6枚切りのままだと河が3段ぶん深くなり、
+     * その深さが上下から高さを食う。1行を8枚にして段を浅くし、
+     * 余っている「幅」の方へ河を逃がす (河の縦の必要量が減る)。
+     */
+    --kawa-cols: 8;
     /* 手牌をやや譲って河と他家を大きくする (それでも縦向きより大きい) */
     --tw: min(
       32px,
       calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 4px) / 14)
     );
     /* 河の牌の下限。潰れると何が切られたか読めない。 */
-    --tw-sm: max(13px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
+    --tw-sm: max(
+      13px,
+      min(
+        26px,
+        calc((var(--pond) - 8px) / var(--pond-span)),
+        calc((var(--table-h) - 60px) / 13 / 1.364)
+      )
+    );
   }
   .actions button { padding: 8px 12px; font-size: 14px; min-width: 58px; }
   .actions button.pass { padding: 8px 10px; font-size: 13px; min-width: 48px; }
