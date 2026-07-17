@@ -11,21 +11,42 @@
   --panel: #0d1a14;
   --line: #24382d;
 
+  /* ヘッダーなど卓以外が使う高さ */
+  --chrome: 130px;
+
   /*
-   * 卓の大きさ。牌はここから逆算するので、どの画面でも手牌がはみ出さない。
-   * 手牌は最大14枚 + ツモ牌の間隔なので、実質14.6枚ぶんの幅が要る。
+   * 卓の幅と高さは別々に決める。正方形に固定すると、横長の画面(スマホ横)で
+   * 高さに引きずられて卓ごと小さくなり、手牌まで潰れてしまう。
    */
-  --table: min(760px, 96vw, calc(100vh - 130px));
-  --tw: min(46px, calc((var(--table) - 30px) / 14.6));
+  --table-w: min(760px, 96vw);
+  /*
+   * 高さは「画面に収まる範囲」かつ「河に必要なぶん」まで。
+   * 縦長の画面では河の大きさが幅で決まるので、高さを余らせると
+   * 卓の中央に大きな空白ができてしまう。
+   * (河ではなく卓幅から算出しているのは、--pond との循環参照を避けるため)
+   */
+  --table-h: min(
+    760px,
+    calc(100vh - var(--chrome)),
+    calc(var(--table-w) - 100px + var(--seat-band) + 68px)
+  );
+
+  /* 手牌の大きさは卓の「幅」から決める。14枚 + ツモ牌の間隔で実質14.6枚ぶん。 */
+  --tw: min(46px, calc((var(--table-w) - 24px) / 14.6));
   /* 牌画像は 66x90 なので、その比率に合わせる */
   --th: calc(var(--tw) * 1.364);
-  /* 河は6列 + 列間5つの隙間が河1マス(卓の24%)に収まる必要がある。
+
+  /* 手前の席が使う帯 = 名札 + 手牌 (手前だけ大きい牌を使う) */
+  --seat-band: calc(var(--th) + 28px);
+  /* 河は上下の席に挟まれた正方形。奥の席は小さい牌なので、その帯は 68px 見ておく。 */
+  --pond: max(84px, min(calc(var(--table-h) - var(--seat-band) - 68px), calc(var(--table-w) - 100px)));
+
+  /* 河は6列 + 列間5つの隙間が河1マス(河の1/3)に収まる必要がある。
      隙間を勘定に入れないと両端の牌がマスからはみ出す。 */
-  --tw-sm: min(26px, calc(var(--table) / 29.5));
+  --tw-sm: max(7px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
   --th-sm: calc(var(--tw-sm) * 1.364);
-  /* 王牌は4列。中央マス(卓の24%)に4枚 + 隙間3つが収まり、
-     さらに左右の河と当たらないよう余白を残せる大きさに抑える。 */
-  --tw-dw: min(var(--tw), calc(var(--table) * 0.052));
+  /* 王牌は4列。中央マスに4枚 + 隙間3つが収まる大きさに抑える。 */
+  --tw-dw: min(var(--tw), calc((var(--pond) / 3 - 10px) / 4));
   --th-dw: calc(var(--tw-dw) * 1.364);
 }
 
@@ -179,10 +200,9 @@ input { cursor: text; }
 
 .table {
   position: relative;
-  /* 卓が画面からはみ出すと、卓上に置いた操作ボタンごと見えなくなる。
-     ヘッダーと牌譜のぶんを引いて、必ずビューポートに収まる大きさにする。 */
-  width: var(--table);
-  aspect-ratio: 1;
+  /* 卓が画面からはみ出すと、卓上に置いた操作ボタンごと見えなくなる。 */
+  width: var(--table-w);
+  height: var(--table-h);
   border-radius: 10px;
   border: 6px solid var(--wood);
   background: radial-gradient(ellipse at 50% 44%, var(--felt) 0%, var(--felt-dark) 82%);
@@ -260,10 +280,9 @@ input { cursor: text; }
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  /* 王牌8枚を中央マスに収めるため、河全体を少し広く取る。
-     マスは正方形のまま (左右の河は中身を90度回すので、正方形でないとはみ出す)。 */
-  width: 72%;
-  aspect-ratio: 1;
+  /* マスは正方形にする (左右の河は中身を90度回すので、正方形でないとはみ出す)。 */
+  width: var(--pond);
+  height: var(--pond);
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
@@ -648,4 +667,60 @@ input { cursor: text; }
 .settings .fields label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
 .settings .apply { margin-top: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-/* 牌の大きさは --table から算出しているので、狭い画面でも自動で縮む。 */
+/* ================= スマホ ================= */
+
+/*
+ * 画面が狭い/低いときは、操作ボタンを卓の上ではなく画面下の固定バーに出す。
+ * 卓の上に重ねると、狭い画面では河に出た牌を隠してしまうため。
+ */
+@media (max-width: 760px), (max-height: 540px) {
+  :root {
+    /* ヘッダー + 下の操作バー(2段: 鳴きなし等 + ポン/パス等)のぶん */
+    --chrome: 132px;
+  }
+  .app { padding: 6px; }
+  header { margin-bottom: 4px; }
+  h1 { font-size: 15px; margin: 0; }
+  .tabs button { padding: 4px 8px; font-size: 12px; }
+
+  /* 操作ボタンは画面下に固定。卓には重ならない。 */
+  .actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: none;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px;
+    background: rgba(4, 12, 9, 0.94);
+    border-top: 1px solid var(--line);
+  }
+  .actions button { min-width: 68px; padding: 10px 12px; font-size: 15px; letter-spacing: 0.05em; }
+  .actions button.pass { min-width: 56px; padding: 10px 10px; font-size: 13px; }
+
+  /* 常用設定も画面下に固定。操作バーのすぐ上に段を作る。 */
+  .opt-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 46px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 6px;
+    background: rgba(4, 12, 9, 0.94);
+    border-top: 1px solid var(--line);
+  }
+  .opt-rail .toggle { min-width: 0; padding: 5px 8px; font-size: 11px; }
+
+  .riichi-guide { bottom: 8px; font-size: 12px; padding: 6px 10px; }
+  .riichi-guide b { font-size: 14px; }
+
+  .result { width: min(94%, 400px); padding: 10px; }
+  .win-hand { padding: 6px 2px; }
+  .headline .pts { font-size: 22px; }
+  .headline .how { font-size: 19px; }
+}
+
+/* 牌の大きさは卓の幅・高さから算出しているので、狭い画面でも自動で縮む。 */
