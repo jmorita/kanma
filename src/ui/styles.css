@@ -68,8 +68,8 @@
      隙間を勘定に入れないと両端の牌がマスからはみ出す。 */
   --tw-sm: max(7px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
   --th-sm: calc(var(--tw-sm) * 1.364);
-  /* 王牌は河・他家の手牌と同じ大きさに揃える。中央枠の余白ぶんは狭めに収める。 */
-  --tw-dw: min(var(--tw-sm), calc((var(--pond) / 3 - 22px) / 4));
+  /* 王牌は河・他家の手牌と同じ大きさ。中央枠に4枚 + 隙間 + 余白が収まらなければ縮める。 */
+  --tw-dw: min(var(--tw-sm), calc((var(--pond) / 3 - 26px) / 4));
   --th-dw: calc(var(--tw-dw) * 1.364);
   /* 和了形の牌。結果パネル(最大470px)に14枚 + アガリ牌の間隔が収まる大きさ。 */
   --tw-win: min(32px, calc((min(470px, 86vw) - 40px) / 15));
@@ -154,8 +154,92 @@ button.hot { background: var(--hot); border-color: var(--hot); font-weight: bold
 button.on { background: var(--gold); color: #1a1a1a; border-color: var(--gold); font-weight: bold; }
 input { cursor: text; }
 
-.tabs { display: flex; gap: 4px; }
-.tab { border-radius: 4px 4px 0 0; }
+/* タブは卓の右上。卓の中に置くので、緑の上でも読めるよう暗い下地を敷く。 */
+.tabs {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 25;
+  display: flex;
+  gap: 4px;
+}
+.tab {
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  background: rgba(8, 20, 15, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.tab.on { background: linear-gradient(#f0cd77, #d4a63f); color: #1a1a1a; border-color: #fff0c4; }
+
+/* ルール・設定は卓の上にかぶせる */
+.panel-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: rgba(4, 14, 10, 0.96);
+  padding: 34px 8px 8px;
+}
+.panel-overlay .rules-panel,
+.panel-overlay .settings { border: none; background: none; padding: 6px 10px; }
+
+/*
+ * 対局中の設定。卓の左下にプルダウンで畳む。
+ * 縦向きでは手牌が卓幅いっぱいに広がるので、卓の隅に置くと手牌のタップを
+ * 奪ってしまう。手牌と名札の帯より上に逃がす。
+ */
+.opt-menu {
+  position: absolute;
+  left: 8px;
+  bottom: calc(var(--seat-band) + 4px);
+  z-index: 6;
+}
+.opt-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 5px;
+  background: rgba(8, 20, 15, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--text);
+  white-space: nowrap;
+}
+.opt-menu > summary::-webkit-details-marker { display: none; }
+.opt-menu > summary::after { content: ' ▲'; font-size: 9px; opacity: 0.7; }
+.opt-menu[open] > summary::after { content: ' ▼'; }
+/* 上に開く (下は画面の端で切れるため) */
+.opt-menu-body {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  background: rgba(8, 20, 15, 0.95);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+.opt-menu-body .toggle {
+  min-width: 130px;
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.opt-menu-body .toggle.on {
+  background: linear-gradient(#f0cd77, #d4a63f);
+  color: #1a1a1a;
+  border-color: #fff0c4;
+  font-weight: bold;
+}
+.opt-menu-body .toggle.on::before { content: '✓ '; }
 
 /* ================= 牌 ================= */
 
@@ -366,10 +450,12 @@ input { cursor: text; }
 .side-right .rack { align-items: flex-end; }
 
 /* --- 名札 --- */
+/* 名札は「席名(+親/リーチ)」と「額」の2段。横に長いと卓を圧迫する。 */
 .plate {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 1px;
   /* 河の牌より前に出す (狭い画面では河と名札が近づくため) */
   position: relative;
   z-index: 3;
@@ -381,6 +467,7 @@ input { cursor: text; }
   white-space: nowrap;
   height: fit-content;
 }
+.plate-row { display: flex; align-items: center; gap: 4px; }
 .side.active .plate { border-color: var(--gold); box-shadow: 0 0 8px rgba(224, 187, 99, 0.5); }
 .plate .pt { color: var(--gold); }
 /* 額は「W」を付けているので、コインの絵文字は重複。端末ごとに見た目も崩れるので出さない。 */
@@ -430,7 +517,7 @@ input { cursor: text; }
 /* リーチ宣言牌は横に倒れるぶん、置き場所も広げる */
 .discards .tile.is-swap { grid-column: span 2; justify-self: start; }
 
-/* 王牌を置く中央の枠。白〜グレーで、牌の周りに少し余白を取る。 */
+/* 王牌を置く中央の枠。枠線だけ白系で、中は暗いグレー。 */
 .pond-center {
   display: flex;
   flex-direction: column;
@@ -438,12 +525,12 @@ input { cursor: text; }
   justify-content: center;
   gap: 6px;
   padding: 8px;
-  background: linear-gradient(160deg, rgba(246, 248, 247, 0.95), rgba(196, 205, 200, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(38, 44, 41, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   font-size: 10px;
-  color: #2a3a33;
+  color: #fff;
   overflow: visible;
   z-index: 2;
 }
@@ -459,18 +546,7 @@ input { cursor: text; }
 .dead-wall .tile { width: var(--tw-dw); height: var(--th-dw); }
 .dead-wall .tile .tile-inner { width: var(--tw-dw); height: var(--th-dw); }
 .rinshan-gap { width: var(--tw-dw); height: var(--th-dw); }
-/* 下に牌がもう1枚あることを、ずらした影で示す (2段積みなので) */
 .dw-stack { position: relative; display: block; }
-.dw-stack::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 3px;
-  width: 100%;
-  height: 100%;
-  border-radius: 12%/9%;
-  background: rgba(0, 0, 0, 0.55);
-}
 .dw-stack .tile { position: relative; }
 /* ラベルはドラ表示の2枚の真下に置く (王牌の右半分) */
 .dw-labels {
@@ -492,24 +568,24 @@ input { cursor: text; }
 }
 .dora-row .cap { color: var(--muted); }
 .dora-row .cap.ura { color: var(--gold); margin-left: 10px; }
-.wall-count { display: flex; align-items: baseline; gap: 3px; color: #4a5c53; }
-.wall-count b { font-size: 19px; color: #16221c; }
-.kan-count { color: #4a5c53; }
+.wall-count { display: flex; align-items: baseline; gap: 3px; color: #fff; }
+.wall-count b { font-size: 19px; color: #fff; }
+.kan-count { color: rgba(255, 255, 255, 0.75); }
 
 /* ================= 操作 ================= */
 
-/* 卓の上、自分の手牌のすぐ上に重ねる */
+/* 操作ボタンは卓の右下。手牌のタップを奪わないよう、手牌の帯より上に置く。 */
 .actions {
   position: absolute;
-  right: 14px;
-  bottom: 88px;
+  right: 8px;
+  bottom: calc(var(--seat-band) + 4px);
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: 60%;
-  z-index: 5;
+  max-width: 55%;
+  z-index: 6;
 }
 /* 鳴き・和了のボタンは打牌より重い判断なので、明確に大きく目立たせる */
 .actions button {
@@ -532,41 +608,8 @@ input { cursor: text; }
 .actions button.call { background: linear-gradient(#3f7fbf, #245287); border-color: #8fc4f0; }
 .actions button.pass { min-width: 78px; font-size: 17px; padding: 15px 18px; background: linear-gradient(#3a463f, #232c27); }
 .actions button.on { background: linear-gradient(#f0cd77, #d4a63f); color: #1a1a1a; border-color: #fff0c4; }
-/* 常用の設定は卓の左下に縦に並べる (卓の上には重ねない) */
-.opt-rail {
-  position: absolute;
-  left: 0;
-  bottom: 44px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  z-index: 5;
-}
-.opt-rail .toggle {
-  min-width: 118px;
-  text-align: left;
-  padding: 7px 11px;
-  font-size: 12px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-}
-.opt-rail .toggle.on {
-  background: linear-gradient(#f0cd77, #d4a63f);
-  color: #1a1a1a;
-  border-color: #fff0c4;
-  font-weight: bold;
-}
-.opt-rail .toggle.on::before { content: '✓ '; }
 /* 卓を画面中央に保ったまま、左脇の余白にレールを置く */
 .app { position: relative; }
-/*
- * 卓の脇にレールを置く余白が無い幅では、ヘッダー下に横並びで畳む。
- * スマホ用の指定 (max-width:760px または max-height:540px) と条件が重ならないようにする。
- * 重なると、こちらの margin-bottom が下部固定バーを押し上げてしまう。
- */
-@media (max-width: 1000px) and (min-width: 761px) and (min-height: 541px) {
-  .opt-rail { position: static; flex-direction: row; justify-content: center; margin-bottom: 6px; }
-}
 
 /* ================= 掛け声の演出 ================= */
 
@@ -899,17 +942,15 @@ input { cursor: text; }
  */
 @media (max-width: 760px), (max-height: 540px) {
   :root {
-    /* ヘッダー + 下の操作バー(2段: 鳴きなし等 + ポン/パス等) + ホームインジケータ */
-    --chrome: calc(132px + env(safe-area-inset-bottom));
+    /* ボタン類は卓の中に入ったので、卓の外はヘッダーとセーフエリアだけ */
+    --chrome: calc(16px + env(safe-area-inset-bottom));
     /* 狭い画面では幅を1pxでも牌に回す */
     --table-w: 100vw;
     --frame: 3px;
     --tsumo-gap: 8px;
   }
-  .app { padding: 6px 0; }
-  /* iPhone下端の横棒 (ホームインジケータ) にボタンが隠れないようにする */
-  .opt-rail { padding-bottom: env(safe-area-inset-bottom); height: calc(38px + env(safe-area-inset-bottom)); }
-  .actions { bottom: calc(38px + env(safe-area-inset-bottom)); }
+  .app { padding: 4px 0; }
+  header { min-height: 0; margin: 0; }
   header { margin-bottom: 4px; }
   h1 { font-size: 15px; margin: 0; }
   .tabs button { padding: 4px 8px; font-size: 12px; }
@@ -938,22 +979,6 @@ input { cursor: text; }
    * 常用設定は最下段。押す頻度が低いので操作ボタンより下に置く。
    * 高さを固定して、操作バーをちょうどこの上に積めるようにする。
    */
-  .opt-rail {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 38px;
-    box-sizing: border-box;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    padding: 0 6px;
-    background: rgba(4, 12, 9, 0.94);
-    border-top: 1px solid var(--line);
-  }
-  .opt-rail .toggle { min-width: 0; padding: 5px 8px; font-size: 11px; }
 
   .result { width: min(94%, 400px); padding: 10px; }
   .win-hand { padding: 6px 2px; }
@@ -970,20 +995,23 @@ input { cursor: text; }
  *   - 奥の席の帯を詰める (小さい牌しか置かないので広く要らない)
  */
 @media (max-height: 540px) {
+@media (max-height: 540px) {
   :root {
-    /* 題名を出さないぶんヘッダーが縮むので、そのぶん卓に回す */
-    --chrome: calc(64px + env(safe-area-inset-bottom));
+    /* ボタン類が卓の中に入ったので、卓の外はほぼ余白のみ。そのぶん卓に高さを回す。 */
+    --chrome: calc(12px + env(safe-area-inset-bottom));
     --top-band: 42px;
-    /* 手牌をさらに譲って河と他家を大きくする (それでも縦向きより大きい) */
+    /* 手牌をやや譲って河と他家を大きくする (それでも縦向きより大きい) */
     --tw: min(
-      30px,
+      32px,
       calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 4px) / 14)
     );
-    /* 河の牌の下限を上げる。潰れると何が切られたか読めない。 */
-    --tw-sm: max(11px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
+    /* 河の牌の下限。潰れると何が切られたか読めない。 */
+    --tw-sm: max(13px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
   }
-  header { margin-bottom: 2px; min-height: 0; }
-
+  .actions button { padding: 8px 12px; font-size: 14px; min-width: 58px; }
+  .actions button.pass { padding: 8px 10px; font-size: 13px; min-width: 48px; }
+  .opt-menu > summary { padding: 4px 9px; font-size: 11px; }
+  .tab { padding: 4px 8px; font-size: 11px; }
   /* 結果パネルが画面からはみ出さないよう、縦に詰めて収める */
   .result {
     width: min(96%, 560px);
@@ -1002,13 +1030,6 @@ input { cursor: text; }
   .result .rake { margin: 4px 0; }
 
   /* 操作ボタンと設定を1段に並べる */
-  .opt-rail {
-    bottom: 0;
-    height: calc(44px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    justify-content: flex-start;
-    padding-left: max(8px, env(safe-area-inset-left));
-  }
   .actions {
     bottom: env(safe-area-inset-bottom);
     left: auto;

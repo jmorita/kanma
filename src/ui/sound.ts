@@ -93,23 +93,38 @@ const tone = (
   o.stop(t0 + dur + 0.02)
 }
 
-/** 牌が卓に当たる音。強さと音程を少し散らして、機械的な繰り返しに聞こえないようにする。 */
+/**
+ * 牌が卓に当たる音。
+ *
+ * 乾いた「カッ」にするための要点:
+ *   - 減衰を速くする (残響が伸びると湿って聞こえる)
+ *   - 低音を削る (低い胴鳴りが強いと「ボッ」という湿った音になる)
+ *   - 高めの帯域を立てる (硬い樹脂どうしが当たる成分)
+ * 強さと音程を少し散らして、機械的な繰り返しに聞こえないようにする。
+ */
 const clack = (strength: number) => {
   const c = getCtx()
   if (!c || !master || !enabled) return
   const v = 0.85 + Math.random() * 0.3
-  noiseBurst(c, master, 0.05, 2600 * v, 0.9, 0.5 * strength, 9)
-  noiseBurst(c, master, 0.03, 5200 * v, 1.6, 0.22 * strength, 14)
-  // 卓に響く低い成分
+
+  // アタックの芯。短く鋭く切る。
+  noiseBurst(c, master, 0.028, 3200 * v, 0.7, 0.55 * strength, 16)
+  // 硬さを出す高域。
+  noiseBurst(c, master, 0.018, 6800 * v, 1.1, 0.3 * strength, 20)
+
+  // 胴の成分。前より高く・短くして、湿った余韻を残さない。
   const o = c.createOscillator()
   o.type = 'triangle'
-  o.frequency.value = 168 * v
+  o.frequency.value = 320 * v
+  const hp = c.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 220 // ボワつく低域を落とす
   const g = c.createGain()
-  g.gain.setValueAtTime(0.5 * strength, c.currentTime)
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.09)
-  o.connect(g).connect(master)
+  g.gain.setValueAtTime(0.3 * strength, c.currentTime)
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.035)
+  o.connect(hp).connect(g).connect(master)
   o.start()
-  o.stop(c.currentTime + 0.1)
+  o.stop(c.currentTime + 0.04)
 }
 
 /*

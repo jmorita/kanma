@@ -296,67 +296,31 @@ export const App = () => {
     <div className={`app back-${back}`}>
       {shrinkHint && <div className="fs-hint">▲ 画面を上にゆっくりスワイプするとツールバーが縮みます</div>}
       <header>
-        {/* 卓では画面を広く使いたいので題名は出さない (開始画面には大きく出る) */}
-        {tab !== 'table' && <h1>韓麻</h1>}
-        <nav className="tabs">
-          {debug && <span className="dbg">デバッグ表示中 (jj で解除)</span>}
-          {/* 全画面APIが使える環境でだけ出す。iOSは効かないので出さない
-              (代わりに toolbarShrink がツールバーを縮める)。 */}
-          {supportsFullscreen() && (
-            <button className="tab fs" onClick={() => void toggleFullscreen()}>
-              {fs ? '⤢ 解除' : '⛶ 全画面'}
-            </button>
-          )}
-          {(['table', 'rules', 'settings'] as Tab[]).map((t) => (
-            <button key={t} className={tab === t ? 'tab on' : 'tab'} onClick={() => setTab(t)}>
-              {t === 'table' ? '卓' : t === 'rules' ? 'ルール' : '設定'}
-            </button>
-          ))}
-        </nav>
+        {debug && <span className="dbg">デバッグ表示中 (jj で解除)</span>}
       </header>
 
-      {tab === 'rules' && <RulesPanel rules={rules} stakes={stakes} seatCount={seatCount} />}
-
-
-      {tab === 'settings' && (
-        <SettingsPanel
-          seatCount={seatCount}
-          stakes={stakes}
-          confirmTap={confirmTap}
-          onConfirmTap={(v) => {
-            setConfirmTap(v)
-            setPending(null)
-          }}
-          sound={sound}
-          onSound={setSound}
-          backSetting={backSetting}
-          onBackSetting={(v) => {
-            setBackSetting(v)
-            setBack(pickBackColor(v))
-          }}
-          onApply={(count, st) => {
-            setStakes(st)
-            resetTable(count, st)
-          }}
-        />
-      )}
-
-      {tab === 'table' && (
+      {(
         <>
-          {/* 対局中に切り替えたい設定だけをまとめる。開始前は出さない。 */}
-          {started && (
-            <div className="opt-rail">
-              <Toggle on={noCall} onClick={() => setNoCall((v) => !v)} label="鳴きなし" />
-              <Toggle on={autoWin} onClick={() => setAutoWin((v) => !v)} label="自動和了" />
-              <Toggle
-                on={autoTsumogiri}
-                onClick={() => setAutoTsumogiri((v) => !v)}
-                label="リーチ後ツモ切り"
-              />
-            </div>
-          )}
           <div className="table-wrap">
             <div className={`table seats-${game.seatCount}`}>
+              {/* タブは卓の右上に置く。開いている間は「閉じる」で戻す。 */}
+              <nav className="tabs">
+                {supportsFullscreen() && (
+                  <button className="tab" onClick={() => void toggleFullscreen()}>
+                    {fs ? '⤢' : '⛶'}
+                  </button>
+                )}
+                {(['rules', 'settings'] as const).map((t) => (
+                  <button
+                    key={t}
+                    className={tab === t ? 'tab on' : 'tab'}
+                    onClick={() => setTab(tab === t ? 'table' : t)}
+                  >
+                    {tab === t ? '閉じる' : t === 'rules' ? 'ルール' : '設定'}
+                  </button>
+                ))}
+              </nav>
+
               {game.players.map((p, i) => (
                 <SeatArea
                   key={i}
@@ -395,6 +359,55 @@ export const App = () => {
                     <b>{wallRemaining(game)}</b>
                   </div>
                 </div>
+              </div>
+
+              {/* 対局中に切り替えたい設定。卓の左下にプルダウンで畳む。 */}
+              {started && (
+                <details className="opt-menu">
+                  <summary>設定</summary>
+                  <div className="opt-menu-body">
+                    <Toggle on={noCall} onClick={() => setNoCall((v) => !v)} label="鳴きなし" />
+                    <Toggle on={autoWin} onClick={() => setAutoWin((v) => !v)} label="自動和了" />
+                    <Toggle
+                      on={autoTsumogiri}
+                      onClick={() => setAutoTsumogiri((v) => !v)}
+                      label="リーチ後ツモ切り"
+                    />
+                  </div>
+                </details>
+              )}
+
+              {/* ルール・設定は卓の上にかぶせる */}
+              {tab === 'rules' && (
+                <div className="panel-overlay">
+                  <RulesPanel rules={rules} stakes={stakes} seatCount={seatCount} />
+                </div>
+              )}
+              {tab === 'settings' && (
+                <div className="panel-overlay">
+                  <SettingsPanel
+                    seatCount={seatCount}
+                    stakes={stakes}
+                    confirmTap={confirmTap}
+                    onConfirmTap={(v) => {
+                      setConfirmTap(v)
+                      setPending(null)
+                    }}
+                    sound={sound}
+                    onSound={setSound}
+                    backSetting={backSetting}
+                    onBackSetting={(v) => {
+                      setBackSetting(v)
+                      setBack(pickBackColor(v))
+                    }}
+                    onApply={(count, st) => {
+                      setStakes(st)
+                      resetTable(count, st)
+                    }}
+                  />
+                </div>
+              )}
+              <div style={{ display: 'none' }}>
               </div>
 
               {/* 操作ボタンは卓の上に重ねる。卓の下に置くと画面外に出て気づけない。 */}
