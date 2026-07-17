@@ -257,6 +257,9 @@ input { cursor: text; }
   display: flex;
   align-items: center;
   gap: 6px;
+  /* 河の牌より前に出す (狭い画面では河と名札が近づくため) */
+  position: relative;
+  z-index: 3;
   padding: 3px 8px;
   background: rgba(0, 0, 0, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -460,8 +463,13 @@ input { cursor: text; }
 .opt-rail .toggle.on::before { content: '✓ '; }
 /* 卓を画面中央に保ったまま、左脇の余白にレールを置く */
 .app { position: relative; }
-@media (max-width: 1000px) {
-  .opt-rail { position: static; flex-direction: row; margin-bottom: 6px; }
+/*
+ * 卓の脇にレールを置く余白が無い幅では、ヘッダー下に横並びで畳む。
+ * スマホ用の指定 (max-width:760px または max-height:540px) と条件が重ならないようにする。
+ * 重なると、こちらの margin-bottom が下部固定バーを押し上げてしまう。
+ */
+@media (max-width: 1000px) and (min-width: 761px) and (min-height: 541px) {
+  .opt-rail { position: static; flex-direction: row; justify-content: center; margin-bottom: 6px; }
 }
 
 /* ================= 掛け声の演出 ================= */
@@ -683,12 +691,16 @@ input { cursor: text; }
   h1 { font-size: 15px; margin: 0; }
   .tabs button { padding: 4px 8px; font-size: 12px; }
 
-  /* 操作ボタンは画面下に固定。卓には重ならない。 */
+  /*
+   * 操作ボタンは画面下に固定。卓には重ならない。
+   * ポン/パスは手牌に近い方が押しやすいので、鳴きなし等の設定より「上」に置く。
+   */
   .actions {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    /* 設定バー(38px)のちょうど上に積む */
+    bottom: 38px;
     max-width: none;
     justify-content: center;
     gap: 6px;
@@ -699,16 +711,22 @@ input { cursor: text; }
   .actions button { min-width: 68px; padding: 10px 12px; font-size: 15px; letter-spacing: 0.05em; }
   .actions button.pass { min-width: 56px; padding: 10px 10px; font-size: 13px; }
 
-  /* 常用設定も画面下に固定。操作バーのすぐ上に段を作る。 */
+  /*
+   * 常用設定は最下段。押す頻度が低いので操作ボタンより下に置く。
+   * 高さを固定して、操作バーをちょうどこの上に積めるようにする。
+   */
   .opt-rail {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 46px;
+    bottom: 0;
+    height: 38px;
+    box-sizing: border-box;
     flex-direction: row;
     justify-content: center;
+    align-items: center;
     gap: 4px;
-    padding: 4px 6px;
+    padding: 0 6px;
     background: rgba(4, 12, 9, 0.94);
     border-top: 1px solid var(--line);
   }

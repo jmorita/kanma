@@ -21,6 +21,7 @@ import { Tile, type Dir } from './Tile'
 import { RulesPanel } from './RulesPanel'
 import { sfx, setSoundEnabled } from './sound'
 import { BACK_COLORS, pickBackColor, type BackColor, type BackColorSetting } from './backColor'
+import { isFullscreen, onFullscreenChange, supportsFullscreen, toggleFullscreen } from './fullscreen'
 
 const HUMAN: Seat = 0
 const CPU_DELAY_MS = 420
@@ -52,6 +53,13 @@ export const App = () => {
   /** 牌の背の色。random は卓を立てるたびに選び直す。 */
   const [backSetting, setBackSetting] = useState<BackColorSetting>('random')
   const [back, setBack] = useState<BackColor>(() => pickBackColor('random'))
+  const [fs, setFs] = useState(false)
+
+  // ESC等で全画面を抜けた場合もボタンの表示を合わせる
+  useEffect(() => {
+    setFs(isFullscreen())
+    return onFullscreenChange(setFs)
+  }, [])
 
   // リーチは2点固定。
   const rules = DEFAULT_RULES
@@ -249,6 +257,11 @@ export const App = () => {
         <h1>韓麻</h1>
         <nav className="tabs">
           {debug && <span className="dbg">デバッグ表示中 (jj で解除)</span>}
+          {supportsFullscreen() && (
+            <button className="tab fs" onClick={() => void toggleFullscreen()}>
+              {fs ? '⤢ 解除' : '⛶ 全画面'}
+            </button>
+          )}
           {(['table', 'rules', 'settings'] as Tab[]).map((t) => (
             <button key={t} className={tab === t ? 'tab on' : 'tab'} onClick={() => setTab(t)}>
               {t === 'table' ? '卓' : t === 'rules' ? 'ルール' : '設定'}
