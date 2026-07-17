@@ -530,6 +530,17 @@ input { cursor: text; }
 .side-left .rack { align-items: flex-start; }
 .side-right .rack { align-items: flex-end; }
 
+/*
+ * 副露はそのプレイヤーから見て手牌の「右側」に置く (実卓と同じ)。
+ * rack の DOM は [副露][手牌] の順なので、右側に回すには席ごとに向きを反転する。
+ *   自分(下・上向き)  : 右 = 画面右  → row-reverse で副露を右へ
+ *   対面(上・下向き)  : 右 = 画面左  → そのまま (副露は既に画面左)
+ *   上家(左・右向き)  : 右 = 画面下  → column-reverse で副露を下へ
+ *   下家(右・左向き)  : 右 = 画面上  → そのまま (副露は既に画面上)
+ */
+.side-bottom .rack { flex-direction: row-reverse; }
+.side-left .rack { flex-direction: column-reverse; }
+
 /* --- 名札 --- */
 /* 名札は「席名(+親/リーチ)」と「額」の2段。横に長いと卓を圧迫する。 */
 .plate {
