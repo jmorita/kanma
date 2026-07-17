@@ -30,6 +30,12 @@ export interface Player {
   hand: Tile[]
   melds: Meld[]
   discards: Tile[]
+  /**
+   * 各捨て牌が手出し (true) かツモ切り (false) か。discards と同じ長さで並ぶ。
+   * ツモ切り = その巡に引いた牌をそのまま切ったこと (tile === drawnTile)。
+   * 鳴いた直後などツモ無しの打牌は手出し扱い。
+   */
+  tedashi: boolean[]
   riichi: boolean
   /** リーチ宣言牌の捨て牌インデックス (横向き表示用)。 */
   riichiTileIndex: number | null
@@ -180,6 +186,7 @@ export const createGame = (
       hand: wall.slice(idx, idx + HAND_SIZE).sort((a, b) => a - b),
       melds: [],
       discards: [],
+      tedashi: [],
       riichi: false,
       riichiTileIndex: null,
       riichiMarkPending: false,
@@ -455,10 +462,13 @@ export const discard = (s: GameState, seat: Seat, tile: Tile, riichi = false): b
   if (s.kuikae !== null && tile === s.kuikae) return false
   if (riichi && !riichiDiscards(s, seat).includes(tile)) return false
 
+  // ツモ切り = その巡に引いた牌をそのまま切った。ツモが無い (鳴き後の打牌) なら手出し。
+  const isTedashi = s.drawnTile === null || tile !== s.drawnTile
   p.hand.splice(i, 1)
   sortHand(p)
   s.kuikae = null
   p.discards.push(tile)
+  p.tedashi.push(isTedashi)
   if (riichi) {
     p.riichi = true
     p.riichiTileIndex = p.discards.length - 1
@@ -556,9 +566,10 @@ const resolveCalls = (s: GameState): void => {
   for (let i = 0; i < need; i++) p.hand.splice(p.hand.indexOf(d.tile), 1)
   sortHand(p)
   p.melds.push({ kind, tile: d.tile, from: d.seat })
-  // 鳴かれた牌は捨て牌から取り除く。
+  // 鳴かれた牌は捨て牌から取り除く。手出し/ツモ切りの記録も揃えて外す。
   const discarder = s.players[d.seat]
   discarder.discards.pop()
+  discarder.tedashi.pop()
   // 取り除いたのがリーチ宣言牌だと、横向きの目印が河から消えてしまう。
   // 麻雀の慣習どおり、次に切る牌を代わりに横に置く。
   if (discarder.riichiTileIndex !== null && discarder.riichiTileIndex >= discarder.discards.length) {

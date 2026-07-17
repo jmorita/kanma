@@ -378,6 +378,15 @@ export const App = () => {
                     <b>{wallRemaining(game)}</b>
                   </div>
                 </div>
+                {/*
+                 * 掛け声 (ロン/ツモ/ポン等) は、動いたプレイヤーの河の上に出す。
+                 * 河は pond の各マスなので、pond の中に置いて方向ごとにそのマスへ重ねる。
+                 */}
+                {effect && (
+                  <div className={`call-effect ef-${effect.dir} ef-${effect.kind}`}>
+                    <span>{effect.text}</span>
+                  </div>
+                )}
               </div>
 
               {/* 対局中に切り替えたい設定。卓の左下にプルダウンで畳む。 */}
@@ -520,12 +529,6 @@ export const App = () => {
                     1点 = {formatChips(stakes.rate)}W / レーキ {stakes.rakePercent}%
                   </div>
                 )}
-              </div>
-            )}
-
-            {effect && (
-              <div className={`call-effect ef-${effect.dir} ef-${effect.kind}`}>
-                <span>{effect.text}</span>
               </div>
             )}
 
@@ -700,7 +703,13 @@ const SeatArea = ({ game, player, dir, chips, points, stakes, human, debug, opts
 const Discards = ({ player }: { player: Player }) => (
   <div className="discards">
     {player.discards.map((t, i) => (
-      <Tile key={i} tile={t} small rotated={player.riichiTileIndex === i} />
+      <Tile
+        key={i}
+        tile={t}
+        small
+        rotated={player.riichiTileIndex === i}
+        tsumogiri={player.tedashi[i] === false}
+      />
     ))}
   </div>
 )

@@ -383,6 +383,11 @@ input { cursor: text; }
 .tile.is-dim .tile-inner { opacity: 0.22; filter: grayscale(0.7); }
 .tile.is-sel { cursor: pointer; }
 /*
+ * 河のツモ切り牌は少しくすませて手出しと見分ける。
+ * 多数派のツモ切りを沈め、少数派の手出し (素のまま) を相対的に浮かせる。
+ */
+.tile.is-tsumogiri .tile-inner { opacity: 0.62; filter: saturate(0.75) brightness(0.9); }
+/*
  * ホバーの強調はマウスのときだけ。タッチ端末では指を離しても :hover が
  * 残り続け、触った牌に枠が付いたままになってしまう。
  */
@@ -767,10 +772,15 @@ input { cursor: text; }
   animation: pop 0.26s cubic-bezier(0.2, 1.7, 0.5, 1);
 }
 .call-effect span { display: block; }
-.ef-bottom { bottom: 150px; left: 50%; transform: translateX(-50%); }
-.ef-top    { top: 120px; left: 50%; transform: translateX(-50%); }
-.ef-left   { left: 90px; top: 50%; transform: translateY(-50%); }
-.ef-right  { right: 90px; top: 50%; transform: translateY(-50%); }
+/*
+ * 掛け声は動いたプレイヤーの河マスの中央に重ねる。
+ * pond を基準に、外周マス (河の深さ) の中心へ置く。
+ * translate(-50%,-50%) で文字の中心をその点に合わせる (pop は scale なので競合しない)。
+ */
+.ef-top    { top: calc(var(--kawa-depth-h) / 2);            left: 50%; transform: translate(-50%, -50%); }
+.ef-bottom { top: calc(100% - var(--kawa-depth-h) / 2);    left: 50%; transform: translate(-50%, -50%); }
+.ef-left   { top: 50%; left: calc(var(--kawa-depth-v) / 2);            transform: translate(-50%, -50%); }
+.ef-right  { top: 50%; left: calc(100% - var(--kawa-depth-v) / 2);     transform: translate(-50%, -50%); }
 
 /*
  * 掛け声の文字色はすべて白で統一する。種類の見分けは、白字の下に敷く

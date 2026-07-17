@@ -23,6 +23,8 @@ interface Props {
   armed?: boolean
   /** ツモってきた牌。少し離して置く。 */
   drawn?: boolean
+  /** 河のツモ切り牌。少しくすませて手出しと見分ける。 */
+  tsumogiri?: boolean
 }
 
 export const Tile = ({
@@ -37,6 +39,7 @@ export const Tile = ({
   pick,
   armed,
   drawn,
+  tsumogiri,
 }: Props) => {
   // 席の向きとリーチ宣言牌の横倒しを合成した最終的な角度。
   const deg = ROT[dir] + (rotated ? 90 : 0)
@@ -52,6 +55,7 @@ export const Tile = ({
     pick ? 'is-pick' : '',
     armed ? 'is-armed' : '',
     drawn ? 'is-drawn' : '',
+    tsumogiri ? 'is-tsumogiri' : '',
   ]
     .filter(Boolean)
     .join(' ')
