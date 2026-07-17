@@ -68,9 +68,11 @@
      隙間を勘定に入れないと両端の牌がマスからはみ出す。 */
   --tw-sm: max(7px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
   --th-sm: calc(var(--tw-sm) * 1.364);
-  /* 王牌は4列。中央マスに4枚 + 隙間3つが収まる大きさに抑える。 */
-  --tw-dw: min(var(--tw), calc((var(--pond) / 3 - 10px) / 4));
+  /* 王牌は河・他家の手牌と同じ大きさに揃える。中央枠の余白ぶんは狭めに収める。 */
+  --tw-dw: min(var(--tw-sm), calc((var(--pond) / 3 - 22px) / 4));
   --th-dw: calc(var(--tw-dw) * 1.364);
+  /* 和了形の牌。結果パネル(最大470px)に14枚 + アガリ牌の間隔が収まる大きさ。 */
+  --tw-win: min(32px, calc((min(470px, 86vw) - 40px) / 15));
 }
 
 /* dvh に対応していれば、ツールバーの出入りに追従する高さを使う。 */
@@ -428,17 +430,20 @@ input { cursor: text; }
 /* リーチ宣言牌は横に倒れるぶん、置き場所も広げる */
 .discards .tile.is-swap { grid-column: span 2; justify-self: start; }
 
+/* 王牌を置く中央の枠。白〜グレーで、牌の周りに少し余白を取る。 */
 .pond-center {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  padding: 8px;
+  background: linear-gradient(160deg, rgba(246, 248, 247, 0.95), rgba(196, 205, 200, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   font-size: 10px;
-  /* ドラを手牌と同じ大きさで出すため、中央マスからは少しはみ出してよい */
+  color: #2a3a33;
   overflow: visible;
   z-index: 2;
 }
@@ -487,9 +492,9 @@ input { cursor: text; }
 }
 .dora-row .cap { color: var(--muted); }
 .dora-row .cap.ura { color: var(--gold); margin-left: 10px; }
-.wall-count { display: flex; align-items: baseline; gap: 3px; color: var(--muted); }
-.wall-count b { font-size: 19px; color: var(--text); }
-.kan-count { color: var(--muted); }
+.wall-count { display: flex; align-items: baseline; gap: 3px; color: #4a5c53; }
+.wall-count b { font-size: 19px; color: #16221c; }
+.kan-count { color: #4a5c53; }
 
 /* ================= 操作 ================= */
 
@@ -675,13 +680,19 @@ input { cursor: text; }
 }
 .start-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #6d4d17, 0 3px 10px rgba(0, 0, 0, 0.6); }
 
-/* 結果も卓の中央に重ねる (下に置くと画面外に出て「次の局へ」に気づけない) */
+/*
+ * 結果も卓の中央に重ねる (下に置くと画面外に出て「次の局へ」に気づけない)。
+ * 卓は画面より小さいことがあるので、卓ではなく画面を基準に大きさを抑える。
+ * 位置は fixed にして、卓からはみ出しても画面内には必ず収める。
+ */
 .result {
-  position: absolute;
+  position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(470px, 86%);
+  width: min(470px, 86vw);
+  max-height: calc(var(--vh) - 16px);
+  overflow-y: auto;
   padding: 14px 16px;
   background: rgba(11, 28, 22, 0.97);
   border: 1px solid var(--gold);
@@ -740,22 +751,42 @@ input { cursor: text; }
 .parts .p .v { color: var(--muted); font-variant-numeric: tabular-nums; }
 .result .capped { color: var(--hot); font-size: 11px; text-align: center; margin-bottom: 6px; }
 
-/* 天鳳の「25000 -1000」。持ち点と増減を並べる。 */
-.ledger {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
+/*
+ * 点数の授受。卓と同じ配置 (手前/右/奥/左) で置くので、
+ * 誰が誰に払ったのかが直感的に分かる。
+ */
+.ledger-seats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 4px;
+  margin: 10px 0;
   font-variant-numeric: tabular-nums;
 }
-.ledger td { padding: 5px 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.ledger .seat { color: var(--muted); white-space: nowrap; }
-.ledger .seat .badge { margin-left: 5px; }
-.ledger .score, .ledger .chip { text-align: right; color: var(--text); }
-.ledger .chip { color: var(--muted); font-size: 12px; }
-.ledger .delta, .ledger .cdelta { text-align: right; font-weight: bold; width: 62px; }
-.ledger .cdelta { font-size: 11px; font-weight: normal; width: 66px; }
-.ledger .plus .delta, .ledger .plus .cdelta { color: var(--gold); }
-.ledger .minus .delta, .ledger .minus .cdelta { color: #e69384; }
+.l-top { grid-area: 1 / 2; }
+.l-left { grid-area: 2 / 1; }
+.l-right { grid-area: 2 / 3; }
+.l-bottom { grid-area: 3 / 2; }
+
+.lseat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lseat .n { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.lseat .n .badge { margin-left: 3px; }
+.lseat .p { font-size: 17px; font-weight: bold; }
+.lseat .c { font-size: 10px; color: var(--muted); }
+.lseat .c em { font-style: normal; margin-left: 4px; }
+.lseat.plus { border-color: rgba(224, 187, 99, 0.5); }
+.lseat.plus .p, .lseat.plus .c em { color: var(--gold); }
+.lseat.minus .p, .lseat.minus .c em { color: #e69384; }
+.lseat.zero .p { color: var(--muted); }
 
 /* 何で和了ったかが一目で分かるよう、和了形をそのまま出す */
 .win-hand {
@@ -768,7 +799,16 @@ input { cursor: text; }
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
 }
-.win-hand .concealed, .win-hand .meld { display: flex; }
+/* 副露の横向き牌は、卓と同じく下端に揃える (上に浮くと不自然) */
+.win-hand .concealed, .win-hand .meld { display: flex; align-items: flex-end; }
+.win-hand .melds { align-items: flex-end; }
+/*
+ * 和了形は結果画面の主役なので、河の小さい牌ではなく手牌に近い大きさで出す。
+ * 14枚 + 副露 + アガリ牌が横に並ぶので、パネル幅から上限を決める。
+ */
+.win-hand .tile { width: var(--tw-win); height: calc(var(--tw-win) * 1.364); }
+.win-hand .tile .tile-inner { width: var(--tw-win); height: calc(var(--tw-win) * 1.364); }
+.win-hand .tile.is-swap { width: calc(var(--tw-win) * 1.364); height: var(--tw-win); }
 .win-hand .agari-tile { margin-left: 10px; position: relative; }
 .win-hand .agari-tile::after {
   content: 'アガリ牌';
@@ -931,14 +971,35 @@ input { cursor: text; }
  */
 @media (max-height: 540px) {
   :root {
-    --chrome: calc(88px + env(safe-area-inset-bottom));
-    --top-band: 46px;
+    /* 題名を出さないぶんヘッダーが縮むので、そのぶん卓に回す */
+    --chrome: calc(64px + env(safe-area-inset-bottom));
+    --top-band: 42px;
+    /* 手牌をさらに譲って河と他家を大きくする (それでも縦向きより大きい) */
     --tw: min(
-      34px,
+      30px,
       calc((var(--table-w) - 2 * var(--frame) - var(--tsumo-gap) - 4px) / 14)
     );
+    /* 河の牌の下限を上げる。潰れると何が切られたか読めない。 */
+    --tw-sm: max(11px, min(26px, calc((var(--pond) / 3 - 6px) / 6)));
   }
-  header { margin-bottom: 2px; }
+  header { margin-bottom: 2px; min-height: 0; }
+
+  /* 結果パネルが画面からはみ出さないよう、縦に詰めて収める */
+  .result {
+    width: min(96%, 560px);
+    max-height: calc(var(--vh) - 12px);
+    overflow-y: auto;
+    padding: 8px 12px;
+  }
+  :root { --tw-win: min(30px, calc((min(560px, 96vw) - 40px) / 15)); }
+  .result .win-hand { padding: 4px 2px; gap: 6px; }
+  .result .headline { margin: 6px 0 4px; }
+  .result .parts { padding: 4px 8px; margin-bottom: 4px; font-size: 11px; }
+  .result .ledger-seats { margin: 6px 0; gap: 3px; }
+  .result .lseat { padding: 3px 6px; }
+  .result .lseat .p { font-size: 14px; }
+  .result .hot.big { padding: 9px 24px; font-size: 15px; }
+  .result .rake { margin: 4px 0; }
 
   /* 操作ボタンと設定を1段に並べる */
   .opt-rail {

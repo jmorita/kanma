@@ -19,20 +19,14 @@ import { tileName, type Tile as TileId } from '../core/tiles'
 import { cpuTurnAction, cpuCallResponse } from '../ai/cpu'
 import { Tile, type Dir } from './Tile'
 import { RulesPanel } from './RulesPanel'
-import { sfx, setSoundEnabled } from './sound'
+import { sfx, setSoundEnabled, unlockAudio } from './sound'
 import { BACK_COLORS, pickBackColor, type BackColor, type BackColorSetting } from './backColor'
-import {
-  isFullscreen,
-  isIos,
-  isStandalone,
-  onFullscreenChange,
-  supportsFullscreen,
-  toggleFullscreen,
-} from './fullscreen'
+import { isFullscreen, onFullscreenChange, supportsFullscreen, toggleFullscreen } from './fullscreen'
 import { enableToolbarShrink, onFirstScroll, shouldShrinkToolbar } from './toolbarShrink'
 
 const HUMAN: Seat = 0
-const CPU_DELAY_MS = 420
+// 各プレイヤーのアクションの間隔。速すぎると何が起きたか追えない。
+const CPU_DELAY_MS = 1000
 
 /**
  * 席を画面のどの辺に置くか。人間は常に手前。
@@ -41,7 +35,7 @@ const CPU_DELAY_MS = 420
 const dirsFor = (seatCount: number): Dir[] =>
   seatCount === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left']
 
-type Tab = 'table' | 'rules' | 'settings' | 'fs'
+type Tab = 'table' | 'rules' | 'settings'
 
 export const App = () => {
   const [seatCount, setSeatCount] = useState(4)
@@ -49,7 +43,7 @@ export const App = () => {
   const [tab, setTab] = useState<Tab>('table')
   /** 鳴きなし: ポン・カンの確認を出さず自動で見送る (ロンは通す)。 */
   const [noCall, setNoCall] = useState(false)
-  /** 自動アガリ: 和了れる場面で自動的にツモ・ロンする。 */
+  /** 自動和了: 和了れる場面で自動的にツモ・ロンする。 */
   const [autoWin, setAutoWin] = useState(false)
   /** リーチ後の自動ツモ切り: 和了牌でもカンでもなければ自動で切る。 */
   const [autoTsumogiri, setAutoTsumogiri] = useState(false)
@@ -64,9 +58,9 @@ export const App = () => {
   const [fs, setFs] = useState(false)
   /**
    * ダブルタップ打牌。1回目のタップで牌を持ち上げ、同じ牌をもう一度タップして初めて切る。
-   * 誤打を防ぎたい人向けの選択肢で、既定はシングルタップ (設定タブで切替)。
+   * 誤打が起きやすいので既定はこちら。設定タブでシングルタップにもできる。
    */
-  const [confirmTap, setConfirmTap] = useState(false)
+  const [confirmTap, setConfirmTap] = useState(true)
   /** 確認待ちの牌 (タップ確認がONのとき)。 */
   const [pending, setPending] = useState<TileId | null>(null)
   /**
@@ -187,7 +181,7 @@ export const App = () => {
     setGame(createGame({ seatCount, dealer: (game.dealer + 1) % seatCount, rules }))
   }, [game.dealer, seatCount, rules, backSetting])
 
-  // 鳴きなし / 自動アガリ。人間の応答を自動で返す。
+  // 鳴きなし / 自動和了。人間の応答を自動で返す。
   useEffect(() => {
     if (!started || effect) return
     if (game.phase === 'call') {
@@ -302,22 +296,16 @@ export const App = () => {
     <div className={`app back-${back}`}>
       {shrinkHint && <div className="fs-hint">▲ 画面を上にゆっくりスワイプするとツールバーが縮みます</div>}
       <header>
-        <h1>韓麻</h1>
+        {/* 卓では画面を広く使いたいので題名は出さない (開始画面には大きく出る) */}
+        {tab !== 'table' && <h1>韓麻</h1>}
         <nav className="tabs">
           {debug && <span className="dbg">デバッグ表示中 (jj で解除)</span>}
-          {supportsFullscreen() ? (
+          {/* 全画面APIが使える環境でだけ出す。iOSは効かないので出さない
+              (代わりに toolbarShrink がツールバーを縮める)。 */}
+          {supportsFullscreen() && (
             <button className="tab fs" onClick={() => void toggleFullscreen()}>
               {fs ? '⤢ 解除' : '⛶ 全画面'}
             </button>
-          ) : (
-            // iOS は全画面APIが無い (Chrome等も中身はWebKitなので同じ)。
-            // ボタンが無い理由と代替手段を出す。
-            isIos() &&
-            !isStandalone() && (
-              <button className="tab fs" onClick={() => setTab('fs')}>
-                ⛶ 全画面
-              </button>
-            )
           )}
           {(['table', 'rules', 'settings'] as Tab[]).map((t) => (
             <button key={t} className={tab === t ? 'tab on' : 'tab'} onClick={() => setTab(t)}>
@@ -329,38 +317,6 @@ export const App = () => {
 
       {tab === 'rules' && <RulesPanel rules={rules} stakes={stakes} seatCount={seatCount} />}
 
-      {/* iOS 向けの案内。全画面APIが無いのでホーム画面追加を勧める。 */}
-      {tab === 'fs' && (
-        <div className="settings">
-          <h3>全画面にする (iPhone / iPad)</h3>
-          <p className="note">
-            iOSは全画面表示の機能をWebページに開放していないため、このアプリからは切り替えられません
-            (Chrome や Firefox もiOSでは中身がSafariと同じなので同様です)。
-            代わりにホーム画面へ追加すると、URLバーが消えて全画面と同じ状態で遊べます。
-          </p>
-          <ol className="howto">
-            <li>
-              <b>共有ボタン</b>を押す
-              <br />
-              <span className="sub2">Safari: 画面下の □に↑ / Chrome: 画面右下の … </span>
-            </li>
-            <li>
-              メニューを下にたどって<b>「ホーム画面に追加」</b>を押す
-            </li>
-            <li>右上の<b>「追加」</b>を押す</li>
-            <li>ホーム画面にできたアイコンから起動する</li>
-          </ol>
-          <p className="note">
-            横向きにすると手牌が大きくなります。ホーム画面から起動すればURLバーのぶんも
-            卓に使えるので、河の牌も見やすくなります。
-          </p>
-          <div className="apply">
-            <button className="hot" onClick={() => setTab('table')}>
-              卓に戻る
-            </button>
-          </div>
-        </div>
-      )}
 
       {tab === 'settings' && (
         <SettingsPanel
@@ -391,7 +347,7 @@ export const App = () => {
           {started && (
             <div className="opt-rail">
               <Toggle on={noCall} onClick={() => setNoCall((v) => !v)} label="鳴きなし" />
-              <Toggle on={autoWin} onClick={() => setAutoWin((v) => !v)} label="自動アガリ" />
+              <Toggle on={autoWin} onClick={() => setAutoWin((v) => !v)} label="自動和了" />
               <Toggle
                 on={autoTsumogiri}
                 onClick={() => setAutoTsumogiri((v) => !v)}
@@ -435,8 +391,8 @@ export const App = () => {
                    */}
                   <DeadWall game={game} />
                   <div className="wall-count">
-                    <b>{wallRemaining(game)}</b>
                     <span>残り</span>
+                    <b>{wallRemaining(game)}</b>
                   </div>
                 </div>
               </div>
@@ -508,6 +464,8 @@ export const App = () => {
                 <button
                   className="start-btn"
                   onClick={() => {
+                    // 音の解錠はユーザー操作の中でしかできない。
+                    void unlockAudio()
                     setPoints(new Array(seatCount).fill(0))
                     setChips(new Array(seatCount).fill(stakes.startingChips))
                     setHouseRake(0)
@@ -539,6 +497,7 @@ export const App = () => {
                 game={game}
                 stakes={stakes}
                 chips={chips}
+                dirs={dirs}
                 houseRake={houseRake}
                 canContinue={canContinue}
                 broke={broke}
@@ -635,10 +594,13 @@ const SeatArea = ({ game, player, dir, chips, points, stakes, human, debug, opts
 
   return (
     <div className={`side side-${dir} ${active ? 'active' : ''}`}>
+      {/* 席名と額は改行して2段にする (横に長いと河や卓を圧迫する) */}
       <div className="plate">
-        <strong>{seatName(player.seat, game.seatCount)}</strong>
-        {game.dealer === player.seat && <span className="badge dealer">親</span>}
-        {player.riichi && <span className="badge riichi">リーチ</span>}
+        <span className="plate-row">
+          <strong>{seatName(player.seat, game.seatCount, game.dealer)}</strong>
+          {game.dealer === player.seat && <span className="badge dealer">親</span>}
+          {player.riichi && <span className="badge riichi">リーチ</span>}
+        </span>
         {/* 名札には現在の持ち額だけを出す。累計の収支は結果パネルで見せる。 */}
         {stakes.rate > 0 ? (
           <span className="chips">{formatChips(chips)}W</span>
@@ -769,6 +731,7 @@ const Result = ({
   game,
   stakes,
   chips,
+  dirs,
   houseRake,
   canContinue,
   broke,
@@ -778,6 +741,8 @@ const Result = ({
   game: GameState
   stakes: StakeSettings
   chips: number[]
+  /** 席を画面のどの辺に置くか。点数授受を卓と同じ配置で見せるのに使う。 */
+  dirs: Dir[]
   houseRake: number
   canContinue: boolean
   broke: number[]
@@ -812,7 +777,7 @@ const Result = ({
 
           {/* 天鳳の「◯符◯飜 ◯点」にあたる大見出し */}
           <div className="headline">
-            <span className="who">{seatName(r.winner!, game.seatCount)}</span>
+            <span className="who">{seatName(r.winner!, game.seatCount, game.dealer)}</span>
             <span className="how">{r.reason === 'tsumo' ? 'ツモ' : 'ロン'}</span>
             {r.reason === 'tsumo' ? (
               <span className="pts">
@@ -820,7 +785,7 @@ const Result = ({
               </span>
             ) : (
               <span className="pts">
-                {sc!.total}点<em>放銃 {seatName(r.loser!, game.seatCount)}</em>
+                {sc!.total}点<em>放銃 {seatName(r.loser!, game.seatCount, game.dealer)}</em>
               </span>
             )}
           </div>
@@ -866,27 +831,30 @@ const Result = ({
         )}
       </div>
 
-      {/* 天鳳の「25000 -1000」に相当。持ち点と増減を並べる。 */}
-      <table className="ledger">
-        <tbody>
-          {r.deltas.map((d, i) => (
-            <tr key={i} className={d > 0 ? 'plus' : d < 0 ? 'minus' : 'zero'}>
-              <td className="seat">
-                {seatName(i, game.seatCount)}
-                {game.dealer === i && <span className="badge dealer">親</span>}
-              </td>
-              {/* 累計点は出さない。この局の増減と、精算後の持ち額だけ見せる。 */}
-              <td className="delta">{d === 0 ? '' : `${fmt(d)}点`}</td>
-              {stakes.rate > 0 && (
-                <>
-                  <td className="chip">{formatChips(chips[i])}W</td>
-                  <td className="cdelta">{d === 0 ? '' : fmt(chipDeltas[i])}</td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/*
+       * 点数の授受は、卓の席と同じ配置で見せる。
+       * 表で縦に並べるより、誰が誰に払ったのかが直感的に分かる。
+       */}
+      <div className={`ledger-seats seats-${game.seatCount}`}>
+        {r.deltas.map((d, i) => (
+          <div
+            key={i}
+            className={`lseat l-${dirs[i]} ${d > 0 ? 'plus' : d < 0 ? 'minus' : 'zero'}`}
+          >
+            <span className="n">
+              {seatName(i, game.seatCount, game.dealer)}
+              {game.dealer === i && <span className="badge dealer">親</span>}
+            </span>
+            <span className="p">{d === 0 ? '±0' : `${fmt(d)}点`}</span>
+            {stakes.rate > 0 && (
+              <span className="c">
+                {formatChips(chips[i])}W
+                {d !== 0 && <em>{fmt(chipDeltas[i])}</em>}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
 
       {stakes.rate > 0 && rake > 0 && (
         <div className="rake">
@@ -902,7 +870,7 @@ const Result = ({
       ) : (
         <div className="broke">
           <span>
-            {broke.map((i) => seatName(i, game.seatCount)).join('・')} がデポジット
+            {broke.map((i) => seatName(i, game.seatCount, game.dealer)).join('・')} がデポジット
             {formatChips(stakes.deposit)}W を払えないため続行できません。
           </span>
           <button className="hot" onClick={onRebuy}>

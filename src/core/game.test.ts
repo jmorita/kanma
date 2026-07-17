@@ -9,9 +9,32 @@ import {
   declareSelfKan,
   rinshanRemaining,
   deadWallOf,
+  seatName,
 } from './game'
 import { cpuTurnAction, cpuCallResponse } from '../ai/cpu'
 import { parseHand, tileFromName, toCounts } from './tiles'
+
+describe('席の呼び名', () => {
+  it('親が東家で、そこから南家・西家・北家と続く', () => {
+    expect(seatName(0, 4, 0)).toBe('東家')
+    expect(seatName(1, 4, 0)).toBe('南家')
+    expect(seatName(2, 4, 0)).toBe('西家')
+    expect(seatName(3, 4, 0)).toBe('北家')
+  })
+
+  it('親が移ると呼び名も移る', () => {
+    // 親が seat1 なら seat1 が東家
+    expect(seatName(1, 4, 1)).toBe('東家')
+    expect(seatName(2, 4, 1)).toBe('南家')
+    expect(seatName(0, 4, 1)).toBe('北家')
+  })
+
+  it('3人打ちに北家は無い', () => {
+    const names = [0, 1, 2].map((s) => seatName(s, 3, 0))
+    expect(names).toEqual(['東家', '南家', '西家'])
+    expect(names).not.toContain('北家')
+  })
+})
 
 describe('局の初期化', () => {
   it('全員13枚 + 親が第一ツモ', () => {

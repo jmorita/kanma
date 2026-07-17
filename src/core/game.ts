@@ -120,11 +120,17 @@ const RINSHAN_COUNT = 4
 /** 王牌 = 嶺上牌4枚 + ドラ表示2枚 + 裏ドラ表示2枚 = 8枚。 */
 const DEAD_WALL = RINSHAN_COUNT + 4
 
-const NAMES_4 = ['あなた', '下家', '対面', '上家']
-const NAMES_3 = ['あなた', '下家', '上家']
+/**
+ * 席の呼び名。親を東家とし、そこから順に南家・西家・北家。
+ * 3人打ちは3席しかないので北家は存在しない。
+ * 親は局ごとに移るので、同じ席でも局によって呼び名が変わる。
+ */
+const WINDS = ['東家', '南家', '西家', '北家']
 
-export const seatName = (s: Seat, seatCount = 4): string =>
-  (seatCount === 3 ? NAMES_3 : NAMES_4)[s] ?? `P${s}`
+export const seatName = (s: Seat, seatCount = 4, dealer = 0): string => {
+  const rel = ((s - dealer) % seatCount + seatCount) % seatCount
+  return WINDS[rel] ?? `P${s}`
+}
 
 export const calledMeldCount = (p: Player): number => p.melds.length
 
@@ -299,7 +305,7 @@ const applyResult = (s: GameState, r: HandResult): void => {
   if (r.winner !== null && r.score) {
     const detail = r.score.parts.map((x) => `${x.label}`).join(' + ')
     s.log.push(
-      `${seatName(r.winner, s.seatCount)} ${r.reason === 'tsumo' ? 'ツモ' : 'ロン'} ${detail} = ${r.score.perPayer}点` +
+      `${seatName(r.winner, s.seatCount, s.dealer)} ${r.reason === 'tsumo' ? 'ツモ' : 'ロン'} ${detail} = ${r.score.perPayer}点` +
         (r.reason === 'tsumo' ? ` × ${s.seatCount - 1} = ${r.score.total}点` : '') +
         (r.score.capped ? ' (上限適用)' : ''),
     )
@@ -394,12 +400,12 @@ export const declareSelfKan = (s: GameState, seat: Seat, tile: Tile): boolean =>
   if (counts[tile] === 4) {
     p.hand = p.hand.filter((t) => t !== tile)
     p.melds.push({ kind: 'ankan', tile, from: null })
-    s.log.push(`${seatName(seat, s.seatCount)} 暗槓 ${tileName(tile)}`)
+    s.log.push(`${seatName(seat, s.seatCount, s.dealer)} 暗槓 ${tileName(tile)}`)
   } else if (existingPon) {
     const i = p.hand.indexOf(tile)
     p.hand.splice(i, 1)
     existingPon.kind = 'kakan'
-    s.log.push(`${seatName(seat, s.seatCount)} 加槓 ${tileName(tile)}`)
+    s.log.push(`${seatName(seat, s.seatCount, s.dealer)} 加槓 ${tileName(tile)}`)
   } else {
     return false
   }
@@ -456,7 +462,7 @@ export const discard = (s: GameState, seat: Seat, tile: Tile, riichi = false): b
   if (riichi) {
     p.riichi = true
     p.riichiTileIndex = p.discards.length - 1
-    s.log.push(`${seatName(seat, s.seatCount)} リーチ (打 ${tileName(tile)})`)
+    s.log.push(`${seatName(seat, s.seatCount, s.dealer)} リーチ (打 ${tileName(tile)})`)
   } else if (p.riichiMarkPending) {
     // 宣言牌が鳴かれていたので、この牌を代わりに横に置く。
     p.riichiTileIndex = p.discards.length - 1
@@ -529,7 +535,7 @@ const resolveCalls = (s: GameState): void => {
     const winner = rons
       .map((c) => ({ c, dist: (c.seat - d.seat + s.seatCount) % s.seatCount }))
       .sort((a, b) => a.dist - b.dist)[0].c
-    if (rons.length > 1) s.log.push(`頭ハネ: ${seatName(winner.seat, s.seatCount)} が総取り`)
+    if (rons.length > 1) s.log.push(`頭ハネ: ${seatName(winner.seat, s.seatCount, s.dealer)} が総取り`)
     s.pendingCalls = []
     declareRon(s, winner.seat)
     return
@@ -559,7 +565,7 @@ const resolveCalls = (s: GameState): void => {
     discarder.riichiTileIndex = null
     discarder.riichiMarkPending = true
   }
-  s.log.push(`${seatName(caller.seat, s.seatCount)} ${kan ? '大明槓' : 'ポン'} ${tileName(d.tile)}`)
+  s.log.push(`${seatName(caller.seat, s.seatCount, s.dealer)} ${kan ? '大明槓' : 'ポン'} ${tileName(d.tile)}`)
 
   s.pendingCalls = []
   s.lastDiscard = null

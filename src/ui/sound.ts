@@ -28,9 +28,25 @@ const getCtx = (): AudioContext | null => {
 
 export const setSoundEnabled = (v: boolean) => {
   enabled = v
-  if (v) getCtx()
 }
 export const isSoundEnabled = () => enabled
+
+/**
+ * 音を解錠する。必ずユーザー操作 (開始ボタンのクリック等) の中から呼ぶこと。
+ * ブラウザは操作なしに音を鳴らすことを禁じており、操作外で作った AudioContext は
+ * suspended のまま止まってしまう。
+ */
+export const unlockAudio = async (): Promise<void> => {
+  const c = getCtx()
+  if (!c) return
+  if (c.state === 'suspended') {
+    try {
+      await c.resume()
+    } catch {
+      /* 解錠できなくても進行は止めない */
+    }
+  }
+}
 
 /** 減衰の速いノイズ。牌が当たる瞬間のアタックを作る。 */
 const noiseBurst = (c: AudioContext, dest: AudioNode, dur: number, freq: number, q: number, gain: number, decay: number) => {
