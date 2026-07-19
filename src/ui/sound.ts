@@ -241,14 +241,14 @@ const mokugyo = (strength = 1) => {
   const t0 = c.currentTime
   // 撞木が当たる瞬間の短いアタック。
   noiseBurst(c, master, 0.012, 2200, 1.6, 0.14 * strength, 45)
-  // 中空の胴鳴り。高→低へ落として「ポクッ」を作る。
+  // 中空の胴鳴り。高→低へ落として「ポクッ」を作る。少し高めの音程。
   const o = c.createOscillator()
   o.type = 'sine'
-  o.frequency.setValueAtTime(430, t0)
-  o.frequency.exponentialRampToValueAtTime(250, t0 + 0.05)
+  o.frequency.setValueAtTime(540, t0)
+  o.frequency.exponentialRampToValueAtTime(330, t0 + 0.05)
   const bp = c.createBiquadFilter()
   bp.type = 'bandpass'
-  bp.frequency.value = 520
+  bp.frequency.value = 660
   bp.Q.value = 2.2
   const g = c.createGain()
   g.gain.setValueAtTime(0.5 * strength, t0)
