@@ -23,6 +23,8 @@ import { sfx, setSoundEnabled, unlockAudio } from './sound'
 import { BACK_COLORS, pickBackColor, type BackColor, type BackColorSetting } from './backColor'
 import { isFullscreen, onFullscreenChange, supportsFullscreen, toggleFullscreen } from './fullscreen'
 import { enableToolbarShrink, onFirstScroll, shouldShrinkToolbar } from './toolbarShrink'
+import { Analytics } from '@vercel/analytics/react'
+import { trackGameStart, trackRoundEnd } from './analytics'
 
 const HUMAN: Seat = 0
 // 各プレイヤーのアクションの間隔。速すぎると何が起きたか追えない。
@@ -167,6 +169,10 @@ export const App = () => {
     setSettled(true)
     // 和了時のおりんは宣言(announce)の瞬間に鳴らすので、ここでは流局音だけ。
     if (game.result.winner === null) sfx.draw_game()
+    // 計測: 1局が和了(tsumo/ron)か流局(draw)で終わった。
+    trackRoundEnd(
+      game.result.winner === null ? 'draw' : game.result.reason === 'tsumo' ? 'tsumo' : 'ron',
+    )
   }, [game.phase, game.result, settled, stakes])
 
   const broke = shortOfDeposit(chips, stakes)
@@ -308,6 +314,8 @@ export const App = () => {
 
   return (
     <div className={`app back-${back}`}>
+      {/* アクセス計測 (cookieなし)。本番でのみ送信される。 */}
+      <Analytics />
       {shrinkHint && <div className="fs-hint">▲ 画面を上にゆっくりスワイプするとツールバーが縮みます</div>}
       <header>
         {debug && <span className="dbg">デバッグ表示中 (jj で解除)</span>}
@@ -520,6 +528,8 @@ export const App = () => {
                   onClick={() => {
                     // 音の解錠はユーザー操作の中でしかできない。
                     void unlockAudio()
+                    // 計測: 実際にプレイ開始した (人数・端末・牌の背の色も一緒に)。
+                    trackGameStart({ seats: seatCount, back: backSetting })
                     setPoints(new Array(seatCount).fill(0))
                     setChips(new Array(seatCount).fill(stakes.startingChips))
                     setBack(pickBackColor(backSetting))
