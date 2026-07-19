@@ -50,7 +50,7 @@ export const App = () => {
   /** リーチ後の自動ツモ切り: 和了牌でもカンでもなければ自動で切る。 */
   const [autoTsumogiri, setAutoTsumogiri] = useState(false)
   const [sound, setSound] = useState(true)
-  const [soundTheme, setTheme] = useState<SoundTheme>('se1')
+  const [soundTheme, setTheme] = useState<SoundTheme>('se2')
   /** デバッグモード: 他家の手牌を開ける。j を素早く2回で切替。 */
   const [debug, setDebug] = useState(false)
   /** ポン/リーチ/ロン/ツモ の演出。表示中は進行を止める。 */
@@ -1054,9 +1054,6 @@ const SettingsPanel = ({
           </button>
           <button className={soundTheme === 'se2' ? 'on' : ''} onClick={() => onSoundTheme('se2')}>
             SE2
-          </button>
-          <button className={soundTheme === 'se3' ? 'on' : ''} onClick={() => onSoundTheme('se3')}>
-            SE3
           </button>
         </div>
       )}
